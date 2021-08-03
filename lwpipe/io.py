@@ -14,19 +14,26 @@ if importlib.util.find_spec("numpy"):
         _make_dir(Path(filepath).parent)
         np.save(filepath, data)
 
+    def load_savez_compressed(filepath: str | PurePath, names):
+        npz = np.load(filepath)
+        datalist = []
+        for name in names:
+            datalist.append(npz[name])
+        return datalist
+
+    def dump_savez_compressed(datalist, filepath: str | PurePath, names):
+        _make_dir(Path(filepath).parent)
+        datadict = {}
+        for name, data in zip(names, datalist):
+            datadict[name] = data
+        np.savez_compressed(filepath, **datadict)
+
 
 if importlib.util.find_spec("pandas"):
     import pandas as pd
 
     def load_csv_as_dataframe(filepath: str | PurePath):
         return pd.read_csv(filepath)
-
-    def load_dataframe(filepath: str | PurePath):
-        return pd.read_pickle(filepath)
-
-    def dump_dataframe(df: pd.DataFrame, filepath: str | PurePath):
-        _make_dir(Path(filepath).parent)
-        df.to_pickle(filepath)
 
 
 def load_pickle(filepath: str | PurePath):
@@ -37,6 +44,24 @@ def load_pickle(filepath: str | PurePath):
 def dump_pickle(data, filepath: str | PurePath):
     with open(filepath, "wb") as f:
         pickle.dump(data, f)
+
+
+def load_dict_pickle(filepath: str | PurePath, names):
+    datalist = []
+    with open(filepath, "rb") as f:
+        datadict = pickle.load(f)
+        for name in names:
+            datalist.append(datadict[name])
+    return datalist
+
+
+def dump_dict_pickle(datalist, filepath: str | PurePath, names):
+    datadict = {}
+    for name, data in zip(names, datalist):
+        datadict[name] = data
+
+    with open(filepath, "wb") as f:
+        pickle.dump(datadict, f)
 
 
 def _make_dir(path: PurePath):

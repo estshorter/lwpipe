@@ -1,21 +1,22 @@
 from __future__ import annotations
 
 import io
-from pathlib import Path
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
-from lwpipe import InputType, Node, Pipeline
+from lwpipe import InputType, IOFuncType, Node, Pipeline
 from lwpipe.io import (
-    dump_dataframe,
+    dump_dict_pickle,
     dump_npy,
     dump_pickle,
-    load_csv_as_dataframe,
-    load_dataframe,
+    dump_savez_compressed,
+    load_dict_pickle,
     load_npy,
     load_pickle,
+    load_savez_compressed,
 )
 
 
@@ -54,7 +55,7 @@ def df_simple():
 
 @pytest.fixture
 def iris():
-    return Path(__file__).parent / "data/iris.csv"
+    return pd.read_csv(Path(__file__).parent / "data/iris.csv")
 
 
 def test_simple(df_simple):
@@ -79,7 +80,6 @@ def test_output(iris, tmp_path):
         Node(
             func=divide,
             inputs=iris,
-            inputs_loader=load_csv_as_dataframe,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -102,11 +102,10 @@ def test_base(iris, tmp_path):
         Node(
             func=mean,
             inputs=iris,
-            inputs_loader=load_csv_as_dataframe,
             outputs="mean",
-            outputs_dumper=dump_dataframe,
+            outputs_dumper=dump_pickle,
             outputs_path=tmp_path / "result1.pickle",
-            outputs_loader=load_dataframe,
+            outputs_loader=load_pickle,
         ),
         Node(
             func=lambda x: multiply(x, 10),
@@ -134,14 +133,13 @@ def test_tuple_output(iris, tmp_path):
         Node(
             func=divide,
             inputs=iris,
-            inputs_loader=load_csv_as_dataframe,
             outputs=("mean1", "mean2"),
-            outputs_dumper=dump_dataframe,
+            outputs_dumper=dump_pickle,
             outputs_path=(
                 tmp_path / "mean1.pickle",
                 tmp_path / "mean2_pickle",
             ),
-            outputs_loader=load_dataframe,
+            outputs_loader=load_pickle,
         ),
         Node(
             func=ten_times,
@@ -164,7 +162,6 @@ def test_in_out(iris, tmp_path):
         Node(
             func=divide,
             inputs=iris,
-            inputs_loader=load_csv_as_dataframe,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -247,8 +244,7 @@ def test_pd_things():
         nodes = [
             Node(
                 func=lambda df: df.mean(),
-                inputs=f,
-                inputs_loader=load_csv_as_dataframe,
+                inputs=pd.read_csv(f),
             )
         ]
 
@@ -261,3 +257,44 @@ def test_no_name_error():
     add_ = partial(add, n=1)
     with pytest.raises(ValueError):
         Node(func=add_, inputs=10)
+
+
+def test_batch(iris, tmp_path):
+    nodes = [
+        Node(
+            func=divide,
+            inputs=iris,
+            outputs=("mean_a", "mean_b"),
+            outputs_dumper=dump_dict_pickle,
+            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_path=tmp_path / "1.pickle",
+            outputs_loader=load_dict_pickle,
+        ),
+        Node(
+            func=lambda x, y: (x, y),
+            name="2",
+            outputs=("a", "b"),
+            outputs_dumper=dump_dict_pickle,
+            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_path=tmp_path / "10.npz",
+            outputs_loader=load_dict_pickle,
+        ),
+        Node(
+            func=ten_times,
+            outputs=("c", "d"),
+            inputs=("a", "b"),
+            outputs_dumper=dump_savez_compressed,
+            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_path=tmp_path / "3.npz",
+            outputs_loader=load_savez_compressed,
+        ),
+        Node(
+            func=lambda x, y: (x, y),
+        ),
+    ]
+
+    pipe = Pipeline(nodes)
+    pipe.run()
+    pipe.run(1)
+    pipe.run(2)
+    pipe.run(3)

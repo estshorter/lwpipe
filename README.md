@@ -89,30 +89,4 @@ assert outputs[0] == 7.0
 assert pipe.results["former_mean"] == 2.0
 ```
 
-Example with pandas:
-``` python
-import io
-from lwpipe import Node, Pipeline
-from lwpipe.io import load_csv_as_dataframe
-
-csv = """A,B,C
-1,2,3
-4,5,6
-7,8,9
-"""
-
-with io.StringIO(csv) as f:
-    nodes = [
-        Node(
-            func=lambda df: df.mean(),
-            inputs=f,
-            inputs_loader=load_csv_as_dataframe,
-        )
-    ]
-
-    pipe = Pipeline(nodes)
-    outputs = pipe.run()
-    assert outputs[0].to_list() == [4.0, 5.0, 6.0]
-```
-
 More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).

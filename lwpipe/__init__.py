@@ -15,6 +15,11 @@ class InputType(IntEnum):
     INTERIM_RESULT = auto()
 
 
+class IOFuncType(IntEnum):
+    INDIVIDUAL = auto()
+    BATCH = auto()
+
+
 class Node:
     def __init__(
         self,
@@ -22,9 +27,9 @@ class Node:
         name: Optional[str] = None,
         inputs: str | list[str] | None = None,
         inputs_type: InputType | list[InputType] = InputType.INTERIM_RESULT,
-        inputs_loader: Callable | list[Callable] | None | list[None] = None,
         outputs: str | list[str] | None = None,
         outputs_dumper: Callable | list[Callable] | None = None,
+        outputs_dumper_type: IOFuncType = IOFuncType.INDIVIDUAL,
         outputs_path: Optional[list[str]] = None,
         outputs_loader: Callable | list[Callable] | None = None,
     ) -> None:
@@ -39,11 +44,10 @@ class Node:
                 のときは、この名前の中間結果を読もうとする。
         inputs_type: Pipeline内で計算した結果をfuncへの入力にしたい場合はINTERIM_RESULTに設定する。
                      それ以外の場合はNON_INTERIM_RESULT。最初のノードは強制的にNON_INTERIM_RESULTに設定される。
-        inputs_loader: inputsに適用する関数。
-                       典型的には、引数で受け取ったファイルパスをloadしたデータを返す関数を入れる。
-                       Noneの場合は何も適用しない。
         outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
+                        outputs_dumper_typeがBATCHの際は、出力変数名用の引数が一つ追加される。
+        outputs_dumper_type: 複数の出力を一つのファイルにまとめたいときはIOFuncType.BATCHを設定する。
         outputs_path: dumpするファイルパス。
         outputs_loader: dumpしたoutputsをloadするための関数。
                         pipelineを途中から実行する場合、中間結果をloadする必要があるが、その際に使われる。
@@ -61,10 +65,24 @@ class Node:
         self.outputs = _convert_item_to_list(outputs)
 
         self.inputs_type = inputs_type
-        self.inputs_loader = inputs_loader
         self.outputs_dumper = outputs_dumper
+        self.outputs_dumper_type = outputs_dumper_type
+        if outputs_dumper_type == IOFuncType.BATCH:
+            if not callable(outputs_dumper):
+                raise ValueError(
+                    "For batch loader/dumper, outputs_dumper_type must be callable"
+                )
+            if (not callable(outputs_loader)) and outputs_loader is not None:
+                raise ValueError(
+                    "For batch loader/dumper, outputs_loader_type must be callable"
+                )
+            if isinstance(outputs_path, list) or isinstance(outputs_path, tuple):
+                raise ValueError(
+                    "For batch loader/dumper, outputs_path must be path-like object"
+                )
         self.outputs_path = _convert_item_to_list(outputs_path)
         self.outputs_loader = outputs_loader
+        self.outputs_loader_type = outputs_dumper_type
 
 
 class Pipeline:
@@ -72,8 +90,10 @@ class Pipeline:
         self.nodes = nodes
         self.results = dict()
 
+        # node.name -> index in self.nodes
         self.name_to_idx = dict()
-        self.outputs_to_idx = dict()
+        # outputs -> (index in self.nodes, pos in node.outputs)
+        self.outputs_to_indexes = dict()
 
         _assert_non_zero_length(nodes, "nodes")
         # 最初のノードのinputs_typeがINTERIM_RESULTはありえないので設定を上書きする。
@@ -89,8 +109,10 @@ class Pipeline:
             self.name_to_idx[node.name] = idx
             if node.outputs is None:
                 continue
-            for output in node.outputs:
-                self.outputs_to_idx[output] = idx
+            for idx_outputs, output in enumerate(node.outputs):
+                if output in self.outputs_to_indexes:
+                    raise ValueError(f"node.output {output} is not unique")
+                self.outputs_to_indexes[output] = (idx, idx_outputs)
 
     def run(self, start: int | str = 0):
         """pipelineを実行する。戻り値はlist。"""
@@ -109,8 +131,7 @@ class Pipeline:
                 outputs = node.func()
             else:
                 inputs = self._get_inputs(node, outputs)
-                inputs_loaded = self._load_inputs(node, inputs)
-                outputs = node.func(*inputs_loaded)
+                outputs = node.func(*inputs)
 
             outputs = _convert_item_to_list(outputs)
             _assert_non_zero_length(outputs, "outputs")
@@ -141,58 +162,82 @@ class Pipeline:
         """
         if idx_start == 0:
             return None
-        outputs = None
+        last_output = None
+        loaded_files_set = set()
+        # idx_startから読み込むこと
+        # さもないと直前のノードの入力が2回読まれる可能性がある
         for idx_ in range(idx_start, len(self.nodes)):
             # 入力が指定されていない場合（前段の出力を入力とする場合）
             if self.nodes[idx_].inputs is None:
+                # idx_start以降のタスクはまだ計算していないのでcontinue
                 if idx_ > idx_start:
-                    # idx_start以降のタスクはまだ計算していないのでcontinue
                     continue
-                # 実質 idx_= idx_start
-                node_prev = self.nodes[idx_ - 1]
-                outputs = []
-                _assert_non_zero_length(
-                    node_prev.outputs_path, "node_prev.outputs_path"
+                last_output = self._load_last_output(
+                    self.nodes[idx_ - 1], loaded_files_set
                 )
-
-                outputs_loaders = _convert_item_to_list(
-                    node_prev.outputs_loader, len(node_prev.outputs_path)
-                )
-                _assert_same_length(
-                    node_prev.outputs_path,
-                    outputs_loaders,
-                    "node_prev.outputs_path",
-                    "outputs_loaders",
-                )
-
-                for output_path, outputs_loader in zip(
-                    node_prev.outputs_path, outputs_loaders
-                ):
-                    outputs.append(outputs_loader(output_path))
             else:  # 前段より前の出力を入力にする場合
-                for input in self.nodes[idx_].inputs:
-                    dependant_node = self.outputs_to_idx[input]
-                    if dependant_node >= idx_start:
-                        # まだ計算していないのでcontinue
-                        continue
-                    node_prev = self.nodes[self.outputs_to_idx[input]]
+                self._load_past_output(idx_, idx_start, loaded_files_set)
+        return last_output
 
-                    outputs_loaders = _convert_item_to_list(
-                        node_prev.outputs_loader, len(node_prev.outputs)
-                    )
-                    _assert_same_length(
-                        node_prev.outputs,
-                        outputs_loaders,
-                        "node_prev.outputs",
-                        "outputs_loaders",
-                    )
+    def _load_last_output(self, node_prev, loaded_files_set):
+        # 本関数はrange(idx_start, len(self.nodes)): のループの最初に実行されるので、
+        # outputs_loaderの呼び出しが冗長ではない
+        if node_prev.outputs_loader_type == IOFuncType.BATCH:
+            loaded_files_set.add(*node_prev.outputs_path)
+            return node_prev.outputs_loader(*node_prev.outputs_path, node_prev.outputs)
 
-                    # inputに指定したデータが何番目かを求める
-                    index_ = node_prev.outputs.index(input)
-                    self.results[input] = outputs_loaders[index_](
-                        node_prev.outputs_path[index_]
-                    )
+        _assert_non_zero_length(node_prev.outputs_path, "node_prev.outputs_path")
+
+        outputs_loaders = _convert_item_to_list(
+            node_prev.outputs_loader, len(node_prev.outputs_path)
+        )
+        _assert_same_length(
+            node_prev.outputs_path,
+            outputs_loaders,
+            "node_prev.outputs_path",
+            "outputs_loaders",
+        )
+
+        outputs = []
+        for output_path, outputs_loader in zip(node_prev.outputs_path, outputs_loaders):
+            loaded_files_set.add(output_path)
+            outputs.append(outputs_loader(output_path))
         return outputs
+
+    def _load_past_output(self, idx, idx_start, loaded_files_set):
+        for input in self.nodes[idx].inputs:
+            idx_dependant_node, idx_in_outputs = self.outputs_to_indexes[input]
+            if idx_dependant_node >= idx_start:
+                # まだ計算していないのでcontinue
+                continue
+
+            node_dep = self.nodes[idx_dependant_node]
+
+            if node_dep.outputs_loader_type == IOFuncType.BATCH:
+                if node_dep.outputs_path[0] in loaded_files_set:
+                    continue
+                loaded_files_set.add(*node_dep.outputs_path)
+                outputs = node_dep.outputs_loader(
+                    *node_dep.outputs_path, node_dep.outputs
+                )
+                for output_key, output in zip(node_dep.outputs, outputs):
+                    self.results[output_key] = output
+                continue
+
+            outputs_loaders = _convert_item_to_list(
+                node_dep.outputs_loader, len(node_dep.outputs)
+            )
+            _assert_same_length(
+                node_dep.outputs,
+                outputs_loaders,
+                "node_prev.outputs",
+                "outputs_loaders",
+            )
+            idx = idx_in_outputs
+            if node_dep.outputs_path[idx] in loaded_files_set:
+                return
+            loaded_files_set.add(node_dep.outputs_path[idx])
+            self.results[input] = outputs_loaders[idx](node_dep.outputs_path[idx])
 
     def _get_inputs(self, node, previous_outputs):
         """前段までの入力を基に、次のNodeへの入力を決める"""
@@ -216,21 +261,6 @@ class Pipeline:
                 raise ValueError(f"unknown input_type: {type(input_type)}")
         return inputs
 
-    def _load_inputs(selfj, node, inputs):
-        if node.inputs_loader is None:
-            return inputs
-
-        inputs_loaders = _convert_item_to_list(node.inputs_loader, len(inputs))
-        _assert_same_length(inputs, inputs_loaders, "inputs", "inputs_loader")
-
-        inputs_loaded = []
-        for input, inputs_loader in zip(inputs, inputs_loaders):
-            if inputs_loader is not None:
-                inputs_loaded.append(inputs_loader(input))
-            else:
-                inputs_loaded.append(input)
-        return inputs_loaded
-
     def _insert_outputs_to_dict(self, node, outputs):
         if node.outputs is None:
             return
@@ -243,6 +273,9 @@ class Pipeline:
     def _dump_outputs(self, node, outputs):
         if node.outputs_dumper is None:
             return
+
+        if node.outputs_dumper_type == IOFuncType.BATCH:
+            return node.outputs_dumper(outputs, *node.outputs_path, node.outputs)
 
         _assert_same_length(outputs, node.outputs_path, "outputs", "node.outputs_path")
         outputs_dumpers = _convert_item_to_list(node.outputs_dumper, len(outputs))

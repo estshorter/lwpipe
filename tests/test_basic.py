@@ -119,7 +119,6 @@ def test_base(iris, tmp_path):
             func=lambda x: add(x, 10),
             name=add.__name__,
             inputs="mean",
-            inputs_type=InputType.INTERIM_RESULT,
         ),
     ]
 
@@ -146,7 +145,6 @@ def test_tuple_output(iris, tmp_path):
         Node(
             func=ten_times,
             inputs=("mean1", "mean2"),
-            inputs_type=InputType.INTERIM_RESULT,
             outputs_dumper=dump_npy,
             outputs_path=(
                 tmp_path / "mul1.npy",
@@ -210,7 +208,6 @@ def test_none_outputs():
             func=lambda x: 10 * x,
             name="multiply",
             inputs=[None],
-            inputs_type=InputType.INTERIM_RESULT,
         ),
     ]
 

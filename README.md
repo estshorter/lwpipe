@@ -53,7 +53,7 @@ Once the first node is executed, you can bypass the node by `pipe.run(1)` or `pi
 Multiple outputs with numpy:
 ``` python
 import numpy as np
-from lwpipe import InputType, Node, Pipeline
+from lwpipe import Node, Pipeline
 from lwpipe.io import dump_npy, load_npy
 
 def split(x):
@@ -72,14 +72,12 @@ nodes = [
         func=lambda x: x.mean(),
         name="former_mean",
         inputs="former", # calculated at the first node
-        inputs_type=InputType.INTERIM_RESULT,
         outputs="former_mean",
     ),
     Node(
         func=lambda x: x.mean(),
         name="latter_mean",
         inputs="latter", # calculated at the first node
-        inputs_type=InputType.INTERIM_RESULT,
         outputs="latter_mean",
     ),
 ]

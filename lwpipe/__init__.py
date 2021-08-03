@@ -72,9 +72,10 @@ class Pipeline:
         self.name_to_idx = dict()
         self.outputs_to_idx = dict()
 
-        _assert_non_zero_length(nodes)
+        _assert_non_zero_length(nodes, "nodes")
         # 最初のノードは中間結果はありえないので設定を上書きする。
-        nodes[0].inputs_type = [InputType.NON_INTERIM_RESULT] * len(nodes[0].inputs)
+        if nodes[0].inputs is not None:
+            nodes[0].inputs_type = [InputType.NON_INTERIM_RESULT] * len(nodes[0].inputs)
 
         for idx, node in enumerate(self.nodes):
             # lambda関数のときは名前の重複を許し、nodes内のidxをsuffixに付与する

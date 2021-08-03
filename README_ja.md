@@ -76,14 +76,12 @@ nodes = [
         func=lambda x: x.mean(),
         name="former_mean",
         inputs="former", # calculated at the first node
-        inputs_type=InputType.INTERIM_RESULT,
         outputs="former_mean",
     ),
     Node(
         func=lambda x: x.mean(),
         name="latter_mean",
         inputs="latter", # calculated at the first node
-        inputs_type=InputType.INTERIM_RESULT,
         outputs="latter_mean",
     ),
 ]

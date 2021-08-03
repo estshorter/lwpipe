@@ -38,7 +38,7 @@ class Node:
                 文字列を渡されており、かつ、対応するinputs_typeがINTERIM_RESULT
                 のときは、この名前の中間結果を読もうとする。
         inputs_type: Pipeline内で計算した結果をfuncへの入力にしたい場合はINTERIM_RESULTに設定する。
-                     それ以外の場合はNON_INTERIM_RESULT。
+                     それ以外の場合はNON_INTERIM_RESULT。最初のノードは強制的にNON_INTERIM_RESULTに設定される。
         inputs_loader: inputsに適用する関数。
                        典型的には、引数で受け取ったファイルパスをloadしたデータを返す関数を入れる。
                        Noneの場合は何も適用しない。
@@ -73,7 +73,7 @@ class Pipeline:
         self.outputs_to_idx = dict()
 
         _assert_non_zero_length(nodes, "nodes")
-        # 最初のノードは中間結果はありえないので設定を上書きする。
+        # 最初のノードのinputs_typeがINTERIM_RESULTはありえないので設定を上書きする。
         if nodes[0].inputs is not None:
             nodes[0].inputs_type = [InputType.NON_INTERIM_RESULT] * len(nodes[0].inputs)
 

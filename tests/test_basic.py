@@ -276,7 +276,7 @@ def test_batch(iris, tmp_path):
             outputs=("a", "b"),
             outputs_dumper=dump_dict_pickle,
             outputs_dumper_type=IOFuncType.BATCH,
-            outputs_path=tmp_path / "10.npz",
+            outputs_path=tmp_path / "2.pickle",
             outputs_loader=load_dict_pickle,
         ),
         Node(

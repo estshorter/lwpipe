@@ -89,4 +89,58 @@ assert outputs[0] == 7.0
 assert pipe.results["former_mean"] == 2.0
 ```
 
+batch dump example:
+``` python
+import io
+import pandas as pd
+from lwpipe import IOFuncType, Node, Pipeline
+from lwpipe.io import dump_dict_pickle, dump_savez_compressed, load_dict_pickle
+
+csv = """A,B,C
+1,2
+3,4
+5,6
+"""
+
+def divide(x: pd.DataFrame):
+    return x.iloc[:, 0], x.iloc[:, 1]
+
+with io.StringIO(csv) as f:
+    nodes = [
+        Node(
+            func=divide,
+            inputs=pd.read_csv(f),
+            outputs=("mean_a", "mean_b"),
+            outputs_dumper=dump_dict_pickle,
+            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_path="1.pickle",
+            outputs_loader=load_dict_pickle,
+        ),
+        Node(
+            func=lambda x, y: (x, y),
+            name="2",
+            outputs=("a", "b"),
+            outputs_dumper=dump_dict_pickle,
+            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_path="2.pickle",
+            outputs_loader=load_dict_pickle,
+        ),
+        Node(
+            func=lambda x, y: (x.max(), y.max()),
+            outputs=("c", "d"),
+            inputs=("a", "b"),
+            outputs_dumper=dump_savez_compressed,
+            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_path="3.npz",
+        ),
+        Node(
+            func=lambda x, y: (x, y),
+        ),
+    ]
+
+    pipe = Pipeline(nodes)
+    outputs = pipe.run()
+    assert outputs == (5, 6)
+```
+
 More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).

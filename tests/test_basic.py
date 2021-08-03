@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import io
 from pathlib import Path
+from functools import partial
 
 import numpy as np
 import pandas as pd
@@ -254,3 +255,9 @@ def test_pd_things():
         pipe = Pipeline(nodes)
         outputs = pipe.run()
         assert outputs[0].to_list() == [4.0, 5.0, 6.0]
+
+
+def test_no_name_error():
+    add_ = partial(add, n=1)
+    with pytest.raises(ValueError):
+        Node(func=add_, inputs=10)

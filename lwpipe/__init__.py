@@ -52,7 +52,10 @@ class Node:
         if name is not None:
             self.name = name
         else:
-            self.name = func.__name__
+            if hasattr(func, "__name__"):
+                self.name = func.__name__
+            else:
+                raise ValueError("Please set node name")
 
         self.inputs = _convert_item_to_list(inputs)
         self.outputs = _convert_item_to_list(outputs)

@@ -115,4 +115,4 @@ with io.StringIO(csv) as f:
     assert outputs[0].to_list() == [4.0, 5.0, 6.0]
 ```
 
-More examples are included in the [test case](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).
+More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).

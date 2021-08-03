@@ -15,7 +15,7 @@ class InputType(IntEnum):
     INTERIM_RESULT = auto()
 
 
-class IOFuncType(IntEnum):
+class DumpType(IntEnum):
     INDIVIDUAL = auto()
     BATCH = auto()
 
@@ -29,7 +29,7 @@ class Node:
         inputs_type: InputType | list[InputType] = InputType.INTERIM_RESULT,
         outputs: str | list[str] | None = None,
         outputs_dumper: Callable | list[Callable] | None = None,
-        outputs_dumper_type: IOFuncType = IOFuncType.INDIVIDUAL,
+        outputs_dumper_type: DumpType = DumpType.INDIVIDUAL,
         outputs_path: Optional[list[str]] = None,
         outputs_loader: Callable | list[Callable] | None = None,
     ) -> None:
@@ -47,7 +47,7 @@ class Node:
         outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
                         outputs_dumper_typeがBATCHの際は、出力変数名用の引数が一つ追加される。
-        outputs_dumper_type: 複数の出力を一つのファイルにまとめたいときはIOFuncType.BATCHを設定する。
+        outputs_dumper_type: 複数の出力を一つのファイルにまとめたいときはDumpType.BATCHを設定する。
         outputs_path: dumpするファイルパス。
         outputs_loader: dumpしたoutputsをloadするための関数。
                         pipelineを途中から実行する場合、中間結果をloadする必要があるが、その際に使われる。
@@ -67,7 +67,7 @@ class Node:
         self.inputs_type = inputs_type
         self.outputs_dumper = outputs_dumper
         self.outputs_dumper_type = outputs_dumper_type
-        if outputs_dumper_type == IOFuncType.BATCH:
+        if outputs_dumper_type == DumpType.BATCH:
             if not callable(outputs_dumper):
                 raise ValueError(
                     "For batch loader/dumper, outputs_dumper_type must be callable"
@@ -182,7 +182,7 @@ class Pipeline:
     def _load_last_output(self, node_prev, loaded_files_set):
         # 本関数はrange(idx_start, len(self.nodes)): のループの最初に実行されるので、
         # outputs_loaderの呼び出しが冗長ではない
-        if node_prev.outputs_loader_type == IOFuncType.BATCH:
+        if node_prev.outputs_loader_type == DumpType.BATCH:
             loaded_files_set.add(*node_prev.outputs_path)
             return node_prev.outputs_loader(*node_prev.outputs_path, node_prev.outputs)
 
@@ -213,7 +213,7 @@ class Pipeline:
 
             node_dep = self.nodes[idx_dependant_node]
 
-            if node_dep.outputs_loader_type == IOFuncType.BATCH:
+            if node_dep.outputs_loader_type == DumpType.BATCH:
                 if node_dep.outputs_path[0] in loaded_files_set:
                     continue
                 loaded_files_set.add(*node_dep.outputs_path)
@@ -274,7 +274,7 @@ class Pipeline:
         if node.outputs_dumper is None:
             return
 
-        if node.outputs_dumper_type == IOFuncType.BATCH:
+        if node.outputs_dumper_type == DumpType.BATCH:
             return node.outputs_dumper(outputs, *node.outputs_path, node.outputs)
 
         _assert_same_length(outputs, node.outputs_path, "outputs", "node.outputs_path")

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from lwpipe import InputType, IOFuncType, Node, Pipeline
+from lwpipe import InputType, DumpType, Node, Pipeline
 from lwpipe.io import (
     dump_dict_pickle,
     dump_npy,
@@ -266,7 +266,7 @@ def test_batch(iris, tmp_path):
             inputs=iris,
             outputs=("mean_a", "mean_b"),
             outputs_dumper=dump_dict_pickle,
-            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_dumper_type=DumpType.BATCH,
             outputs_path=tmp_path / "1.pickle",
             outputs_loader=load_dict_pickle,
         ),
@@ -275,7 +275,7 @@ def test_batch(iris, tmp_path):
             name="2",
             outputs=("a", "b"),
             outputs_dumper=dump_dict_pickle,
-            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_dumper_type=DumpType.BATCH,
             outputs_path=tmp_path / "2.pickle",
             outputs_loader=load_dict_pickle,
         ),
@@ -284,7 +284,7 @@ def test_batch(iris, tmp_path):
             outputs=("c", "d"),
             inputs=("a", "b"),
             outputs_dumper=dump_savez_compressed,
-            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_dumper_type=DumpType.BATCH,
             outputs_path=tmp_path / "3.npz",
             outputs_loader=load_savez_compressed,
         ),

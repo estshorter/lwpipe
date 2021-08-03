@@ -1,5 +1,5 @@
 # Overview
-**expipe** provides a pipeline for numerical EXperiments.
+**lwpipe** provides a pipeline for numerical EXperiments.
 For example, this module can be used in preprocessing steps of machine learning. Preprocessing consists of several steps, some of which take time to execute. In this case, it is common in the trial-and-error stage, such as numerical experiments, to save the calculation results of the computationally-intensive steps and load them in the later programs to reduce the time required when the later steps are changed. This module reduces boilerplate code for file IO in the use cases above.
 
 Note that pipelines in this module do not have the concept of dependency between nodes (tasks), and nodes will be executed sequentially.
@@ -7,13 +7,13 @@ Note that pipelines in this module do not have the concept of dependency between
 # Installation
 from pypi: 
 ``` sh
-pip install expipe
+pip install lwpipe
 ```
 
 # Usage
 Minimal example (of course, no need to use this library..):
 ``` python
-from expipe import Node, Pipeline
+from lwpipe import Node, Pipeline
 
 nodes = [
     Node(func=lambda x,y: x+y, inputs=(1,2)),
@@ -27,8 +27,8 @@ assert outputs[0] == 9
 
 Example with interim data output:
 ``` python
-from expipe import Node, Pipeline
-from expipe.io import dump_pickle, load_pickle
+from lwpipe import Node, Pipeline
+from lwpipe.io import dump_pickle, load_pickle
 
 def time_consuming_func(x):
     return x
@@ -53,8 +53,8 @@ Once the first node is executed, you can bypass the node by `pipe.run(1)` or `pi
 Multiple outputs with numpy:
 ``` python
 import numpy as np
-from expipe import InputType, Node, Pipeline
-from expipe.io import dump_npy, load_npy
+from lwpipe import InputType, Node, Pipeline
+from lwpipe.io import dump_npy, load_npy
 
 def split(x):
     return x[:5], x[5:]
@@ -94,8 +94,8 @@ assert pipe.results["former_mean"] == 2.0
 Example with pandas:
 ``` python
 import io
-from expipe import Node, Pipeline
-from expipe.io import load_csv_as_dataframe
+from lwpipe import Node, Pipeline
+from lwpipe.io import load_csv_as_dataframe
 
 csv = """A,B,C
 1,2,3

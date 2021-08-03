@@ -1,5 +1,5 @@
 # Overview
-expipeは数値実験用のパイプラインを提供するモジュールであり、
+lwpipeは数値実験用のパイプラインを提供するモジュールであり、
 例えば、機械学習における前処理手順に適用可能です。
 前処理は複数の手順から構成されており、
 そのうちのいくつかは実行に時間を要します。
@@ -11,13 +11,13 @@ expipeは数値実験用のパイプラインを提供するモジュールで�
 # Installation
 from pypi: 
 ``` sh
-pip install expipe
+pip install lwpipe
 ```
 
 # Usage
 Minimal example (of course, no need to use this library..):
 ``` python
-from expipe import Node, Pipeline
+from lwpipe import Node, Pipeline
 
 nodes = [
     Node(func=lambda x,y: x+y, inputs=(1,2)),
@@ -31,8 +31,8 @@ assert outputs[0] == 9
 
 Example with interim data output:
 ``` python
-from expipe import Node, Pipeline
-from expipe.io import dump_pickle, load_pickle
+from lwpipe import Node, Pipeline
+from lwpipe.io import dump_pickle, load_pickle
 
 def time_consuming_func(x):
     return x
@@ -57,8 +57,8 @@ Once the first node is executed, you can bypass the node by `pipe.run(1)` or `pi
 Multiple outputs with numpy:
 ``` python
 import numpy as np
-from expipe import InputType, Node, Pipeline
-from expipe.io import dump_npy, load_npy
+from lwpipe import InputType, Node, Pipeline
+from lwpipe.io import dump_npy, load_npy
 
 def split(x):
     return x[:5], x[5:]
@@ -98,8 +98,8 @@ assert pipe.results["former_mean"] == 2.0
 Example with pandas:
 ``` python
 import io
-from expipe import Node, Pipeline
-from expipe.io import load_csv_as_dataframe
+from lwpipe import Node, Pipeline
+from lwpipe.io import load_csv_as_dataframe
 
 csv = """A,B,C
 1,2,3

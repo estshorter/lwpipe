@@ -6,8 +6,8 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import pytest
-from expipe import InputType, Node, Pipeline
-from expipe.io import (
+from lwpipe import InputType, Node, Pipeline
+from lwpipe.io import (
     dump_dataframe,
     dump_npy,
     dump_pickle,

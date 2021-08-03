@@ -21,7 +21,7 @@ class Node:
         func: Callable,
         name: Optional[str] = None,
         inputs: str | list[str] | None = None,
-        inputs_type: InputType | list[InputType] = InputType.NON_INTERIM_RESULT,
+        inputs_type: InputType | list[InputType] = InputType.INTERIM_RESULT,
         inputs_loader: Callable | list[Callable] | None | list[None] = None,
         outputs: str | list[str] | None = None,
         outputs_dumper: Callable | list[Callable] | None = None,
@@ -71,6 +71,11 @@ class Pipeline:
 
         self.name_to_idx = dict()
         self.outputs_to_idx = dict()
+
+        _assert_non_zero_length(nodes)
+        # 最初のノードは中間結果はありえないので設定を上書きする。
+        nodes[0].inputs_type = [InputType.NON_INTERIM_RESULT] * len(nodes[0].inputs)
+
         for idx, node in enumerate(self.nodes):
             # lambda関数のときは名前の重複を許し、nodes内のidxをsuffixに付与する
             if node.name == "<lambda>":

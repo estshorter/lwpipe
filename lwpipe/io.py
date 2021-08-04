@@ -14,18 +14,14 @@ if importlib.util.find_spec("numpy"):
         _make_dir(Path(filepath).parent)
         np.save(filepath, data)
 
-    def load_savez_compressed(filepath: str | PurePath, names):
+    def load_savez_compressed(filepath: str | PurePath, datalabels):
         npz = np.load(filepath)
-        datalist = []
-        for name in names:
-            datalist.append(npz[name])
+        datalist = [npz[label] for label in datalabels]
         return datalist
 
-    def dump_savez_compressed(datalist, filepath: str | PurePath, names):
+    def dump_savez_compressed(datalist, filepath: str | PurePath, datalabels):
         _make_dir(Path(filepath).parent)
-        datadict = {}
-        for name, data in zip(names, datalist):
-            datadict[name] = data
+        datadict = {label: data for label, data in zip(datalabels, datalist)}
         np.savez_compressed(filepath, **datadict)
 
 
@@ -39,20 +35,15 @@ def dump_pickle(data, filepath: str | PurePath):
         pickle.dump(data, f)
 
 
-def load_dict_pickle(filepath: str | PurePath, names):
-    datalist = []
+def load_dict_pickle(filepath: str | PurePath, datalabels):
     with open(filepath, "rb") as f:
         datadict = pickle.load(f)
-        for name in names:
-            datalist.append(datadict[name])
-    return datalist
+        datalist = [datadict[label] for label in datalabels]
+        return datalist
 
 
-def dump_dict_pickle(datalist, filepath: str | PurePath, names):
-    datadict = {}
-    for name, data in zip(names, datalist):
-        datadict[name] = data
-
+def dump_dict_pickle(datalist, filepath: str | PurePath, datalabels):
+    datadict = {label: data for label, data in zip(datalabels, datalist)}
     with open(filepath, "wb") as f:
         pickle.dump(datadict, f)
 

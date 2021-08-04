@@ -5,7 +5,7 @@ from functools import partial
 
 import numpy as np
 import pytest
-from lwpipe import DumpType, InputType, Node, Pipeline
+from lwpipe import DumpType, Node, Pipeline
 from lwpipe.io import (
     dump_dict_pickle,
     dump_npy,
@@ -164,13 +164,9 @@ def test_in_out(np_array_2d, tmp_path):
             outputs_loader=load_pickle,
         ),
         Node(
-            func=multiply_two_inputs,
-            inputs=("mean1", "mean2", 10),
-            inputs_type=[
-                InputType.INTERIM_RESULT,
-                InputType.INTERIM_RESULT,
-                InputType.NON_INTERIM_RESULT,
-            ],
+            func=partial(multiply_two_inputs, n=10),
+            inputs=("mean1", "mean2"),
+            name=multiply_two_inputs.__name__,
         ),
     ]
 

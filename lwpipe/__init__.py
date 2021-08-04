@@ -10,11 +10,6 @@ logger = logging.getLogger(__name__)
 __version__ = "2.0.0"
 
 
-class InputType(IntEnum):
-    NON_INTERIM_RESULT = auto()
-    INTERIM_RESULT = auto()
-
-
 class DumpType(IntEnum):
     INDIVIDUAL = auto()
     BATCH = auto()
@@ -26,7 +21,6 @@ class Node:
         func: Callable,
         name: Optional[str] = None,
         inputs: str | list[str] | None = None,
-        inputs_type: InputType | list[InputType] = InputType.INTERIM_RESULT,
         outputs: str | list[str] | None = None,
         outputs_dumper: Callable | list[Callable] | None = None,
         outputs_dumper_type: DumpType = DumpType.INDIVIDUAL,
@@ -40,10 +34,7 @@ class Node:
         name: 関数の名前。Noneのときはfunc.__name__が代入される。
         inputs: 入力データ。最初のノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
                 それ以外のノードでNoneを設定した場合は、前段の出力を入力として使うという設定になる。
-                文字列が渡されており、かつ、対応するinputs_typeがINTERIM_RESULT
-                のときは、この名前の中間結果を、dict型のPipiline.resultsから読もうとする。
-        inputs_type: Pipeline内で計算した結果をfuncへの入力にしたい場合はINTERIM_RESULTに設定する。
-                     それ以外の場合はNON_INTERIM_RESULT。最初のノードは強制的にNON_INTERIM_RESULTに設定される。
+                文字列が渡されているときは、この名前の中間結果を、dict型のPipiline.resultsから読もうとする。
         outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
                         outputs_dumper_typeがBATCHの際は、出力変数名用の引数がfuncの引数の最後に一つ追加される。
@@ -64,7 +55,6 @@ class Node:
         self.inputs = _convert_item_to_list(inputs)
         self.outputs = _convert_item_to_list(outputs)
 
-        self.inputs_type = inputs_type
         self.outputs_dumper = outputs_dumper
         self.outputs_dumper_type = outputs_dumper_type
         if outputs_dumper_type == DumpType.BATCH:
@@ -96,9 +86,6 @@ class Pipeline:
         self.outputs_to_indexes = dict()
 
         _assert_non_zero_length(nodes, "nodes")
-        # 最初のノードのinputs_typeがINTERIM_RESULTはありえないので設定を上書きする。
-        if nodes[0].inputs is not None:
-            nodes[0].inputs_type = [InputType.NON_INTERIM_RESULT] * len(nodes[0].inputs)
 
         for idx, node in enumerate(self.nodes):
             # lambda関数のときは名前の重複を許し、nodes内のidxをsuffixに付与する
@@ -126,9 +113,12 @@ class Pipeline:
                 f"Running {idx+1}/{len(self.nodes[idx_start:])} tasks ({node.name})"
             )
 
-            # 最初の層に入力データがないときにも対応させる
-            if idx == 0 and idx_start == 0 and node.inputs is None:
-                outputs = node.func()
+            # 最初のノードだけ特別扱い
+            if idx == 0 and idx_start == 0:
+                if node.inputs is not None:
+                    outputs = node.func(*node.inputs)
+                else:
+                    outputs = node.func()
             else:
                 inputs = self._get_inputs(node, outputs)
                 outputs = node.func(*inputs)
@@ -250,15 +240,8 @@ class Pipeline:
         inputs = []
         _assert_non_zero_length(node.inputs, "node.inputs")
 
-        inputs_type = _convert_item_to_list(node.inputs_type, len(node.inputs))
-        _assert_same_length(node.inputs, inputs_type, "node.inputs", "inputs_type")
-        for input, input_type in zip(node.inputs, inputs_type):
-            if input_type == InputType.INTERIM_RESULT:
-                inputs.append(self.results[input])
-            elif input_type == InputType.NON_INTERIM_RESULT:
-                inputs.append(input)
-            else:
-                raise ValueError(f"unknown input_type: {type(input_type)}")
+        for input in node.inputs:
+            inputs.append(self.results[input])
         return inputs
 
     def _insert_outputs_to_dict(self, node, outputs):

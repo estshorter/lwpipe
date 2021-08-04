@@ -36,14 +36,17 @@ class Node:
         name: 関数の名前。Noneのときはfunc.__name__が代入される。__name__がなければ"anonymous"。
         inputs: 入力データ。最初のノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
                 それ以外のノードでNoneを設定した場合は、前段の出力を入力として使うという設定になる。
-                文字列が渡されているときは、この名前の中間結果を、dict型のPipiline.resultsから読もうとする。
+                文字列が渡されているときは、dict型のPipiline.resultsからその名前の中間結果を読もうとする。
         outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
-                        outputs_dumper_typeがBATCHの際は、出力変数名用の引数がfuncの引数の最後に一つ追加される。
+                        引数は(data, filepath: str | PurePath) を想定。
+                        outputs_dumper_typeがBATCHの際は、引数にデータのラベルを表すlist[str]が追加され、
+                        (datalist, filepath: str | PurePath, datalabels)
+                        となる。
         outputs_dumper_type: 複数の出力データを一つのファイルに保存したいときはDumpType.BATCHを設定する。
         outputs_path: dumpするファイルパス。
         outputs_loader: dumpしたoutputsをloadするための関数。
-                        pipelineを途中から実行する場合、中間結果をloadする必要があるが、その際に使われる。
+                        pipelineを途中から実行する場合、中間結果をloadする必要があるが、その際にコールされる。
         """
         self.func = func
         if name is not None:

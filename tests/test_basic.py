@@ -241,10 +241,12 @@ def test_pd_things():
     assert outputs[0] == 5.0
 
 
-def test_no_name_error():
+def test_duplicate_name():
     add_ = partial(add, n=1)
-    with pytest.raises(ValueError):
-        Node(func=add_, inputs=10)
+    pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
+    pipe.run()
+    assert pipe.nodes[0].name == "anonymous"
+    assert pipe.nodes[1].name == "anonymous_2"
 
 
 def test_batch(np_array_2d, tmp_path):

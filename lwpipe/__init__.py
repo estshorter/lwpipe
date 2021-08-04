@@ -50,7 +50,7 @@ class Node:
             if hasattr(func, "__name__"):
                 self.name = func.__name__
             else:
-                raise ValueError("Please set node name")
+                self.name = "anonymous"
 
         self.inputs = _convert_item_to_list(inputs)
         self.outputs = _convert_item_to_list(outputs)
@@ -87,12 +87,14 @@ class Pipeline:
 
         _assert_non_zero_length(nodes, "nodes")
 
+        name_duplicate_counter = {}
+
         for idx, node in enumerate(self.nodes):
-            # lambda関数のときは名前の重複を許し、nodes内のidxをsuffixに付与する
-            if node.name == "<lambda>":
-                node.name = f"<lambda>_pos{idx}_"
             if node.name in self.name_to_idx:
-                raise ValueError(f"node name '{node.name}' is duplicated.")
+                name_duplicate_counter[node.name] += 1
+                node.name += f"_{name_duplicate_counter[node.name]}"
+            else:
+                name_duplicate_counter[node.name] = 1
             self.name_to_idx[node.name] = idx
             if node.outputs is None:
                 continue

@@ -97,7 +97,7 @@ batch dump example:
 ``` python
 import io
 import pandas as pd
-from lwpipe import IOFuncType, Node, Pipeline
+from lwpipe import DumpType, Node, Pipeline
 from lwpipe.io import dump_dict_pickle, dump_savez_compressed, load_dict_pickle
 
 csv = """A,B,C
@@ -116,7 +116,7 @@ with io.StringIO(csv) as f:
             inputs=pd.read_csv(f),
             outputs=("mean_a", "mean_b"),
             outputs_dumper=dump_dict_pickle,
-            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_dumper_type=DumpType.BATCH,
             outputs_path="1.pickle",
             outputs_loader=load_dict_pickle,
         ),
@@ -125,7 +125,7 @@ with io.StringIO(csv) as f:
             name="2",
             outputs=("a", "b"),
             outputs_dumper=dump_dict_pickle,
-            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_dumper_type=DumpType.BATCH,
             outputs_path="2.pickle",
             outputs_loader=load_dict_pickle,
         ),
@@ -134,7 +134,7 @@ with io.StringIO(csv) as f:
             outputs=("c", "d"),
             inputs=("a", "b"),
             outputs_dumper=dump_savez_compressed,
-            outputs_dumper_type=IOFuncType.BATCH,
+            outputs_dumper_type=DumpType.BATCH,
             outputs_path="3.npz",
         ),
         Node(

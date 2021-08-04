@@ -243,7 +243,6 @@ def test_batch(np_array_2d, tmp_path):
         ),
         Node(
             func=lambda x, y: (x, y),
-            name="2",
             outputs=("a", "b"),
             outputs_dumper=dump_dict_pickle,
             outputs_dumper_type=DumpType.BATCH,
@@ -252,8 +251,8 @@ def test_batch(np_array_2d, tmp_path):
         ),
         Node(
             func=ten_times_two_inputs,
-            outputs=("c", "d"),
             inputs=("a", "b"),
+            outputs=("c", "d"),
             outputs_dumper=dump_savez_compressed,
             outputs_dumper_type=DumpType.BATCH,
             outputs_path=tmp_path / "3.npz",

@@ -38,7 +38,7 @@ class Node:
         outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
                         outputs_dumper_typeがBATCHの際は、出力変数名用の引数がfuncの引数の最後に一つ追加される。
-        outputs_dumper_type: 複数の出力を一つのファイルにまとめたいときはDumpType.BATCHを設定する。
+        outputs_dumper_type: 複数の出力データを一つのファイルに保存したいときはDumpType.BATCHを設定する。
         outputs_path: dumpするファイルパス。
         outputs_loader: dumpしたoutputsをloadするための関数。
                         pipelineを途中から実行する場合、中間結果をloadする必要があるが、その際に使われる。

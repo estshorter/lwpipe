@@ -5,7 +5,6 @@ from functools import partial
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import pytest
 from lwpipe import InputType, DumpType, Node, Pipeline
 from lwpipe.io import (
@@ -20,28 +19,28 @@ from lwpipe.io import (
 )
 
 
-def mean(x: pd.DataFrame):
-    return x.iloc[:, :4].mean()
+def mean(x):
+    return x[:, :4].mean()
 
 
-def multiply(x: pd.DataFrame, n: int | float):
-    return (x * n).to_numpy()
+def multiply(x, n: int | float):
+    return x * n
 
 
 def add(x, n: int | float):
     return x + n
 
 
-def divide(x: pd.DataFrame):
-    return x.iloc[:10, :4].mean(), x.iloc[:20, :4].mean()
+def divide(x):
+    return x[:10, :4].mean(), x[:20, :4].mean()
 
 
-def divide_multiply(x: pd.DataFrame, y: pd.DataFrame, n: int | float):
-    return (x * n).to_numpy(), (y * n).to_numpy()
+def divide_multiply(x, y, n: int | float):
+    return x * n, y * n
 
 
-def ten_times(x: pd.DataFrame, y: pd.DataFrame):
-    return (x * 10).to_numpy(), (y * 10).to_numpy()
+def ten_times(x, y):
+    return x * 10, y * 10
 
 
 def sum(x):
@@ -49,20 +48,20 @@ def sum(x):
 
 
 @pytest.fixture
-def df_simple():
-    return pd.DataFrame(np.arange(12).reshape(3, 4))
-
-
-@pytest.fixture
 def iris():
-    return pd.read_csv(Path(__file__).parent / "data/iris.csv")
+    return np.loadtxt(
+        Path(__file__).parent / "data/iris.csv",
+        skiprows=1,
+        usecols=[0, 1, 2, 3],
+        delimiter=",",
+    )
 
 
-def test_simple(df_simple):
+def test_simple():
     nodes = [
         Node(
             func=add,
-            inputs=(df_simple, 1),
+            inputs=(np.arange(12).reshape(3, 4), 1),
         ),
         Node(
             func=sum,
@@ -72,7 +71,7 @@ def test_simple(df_simple):
     pipe = Pipeline(nodes)
     outputs = pipe.run()
     outputs_np = outputs[0].tolist()
-    assert outputs_np == [15, 18, 21, 24]
+    assert outputs_np == 78
 
 
 def test_output(iris, tmp_path):
@@ -234,23 +233,22 @@ def test_resume_duplicate_name():
 
 
 def test_pd_things():
-    csv = """A,B,C
-    1,2,3
-    4,5,6
-    7,8,9
+    csv = """1 2 3
+    4 5 6
+    7 8 9
     """
 
-    with io.StringIO(csv) as f:
-        nodes = [
-            Node(
-                func=lambda df: df.mean(),
-                inputs=pd.read_csv(f),
-            )
-        ]
+    file = io.StringIO(csv)
+    nodes = [
+        Node(
+            func=lambda x: x.mean(),
+            inputs=np.loadtxt(file),
+        )
+    ]
 
-        pipe = Pipeline(nodes)
-        outputs = pipe.run()
-        assert outputs[0].to_list() == [4.0, 5.0, 6.0]
+    pipe = Pipeline(nodes)
+    outputs = pipe.run()
+    assert outputs[0] == 5.0
 
 
 def test_no_name_error():

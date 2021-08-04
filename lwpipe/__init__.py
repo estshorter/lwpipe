@@ -31,7 +31,7 @@ class Node:
         Parameters
         ------------------
         func: 適用する関数。
-        name: 関数の名前。Noneのときはfunc.__name__が代入される。
+        name: 関数の名前。Noneのときはfunc.__name__が代入される。__name__がなければ"anonymous"。
         inputs: 入力データ。最初のノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
                 それ以外のノードでNoneを設定した場合は、前段の出力を入力として使うという設定になる。
                 文字列が渡されているときは、この名前の中間結果を、dict型のPipiline.resultsから読もうとする。

@@ -2,11 +2,10 @@ from __future__ import annotations
 
 import io
 from functools import partial
-from pathlib import Path
 
 import numpy as np
 import pytest
-from lwpipe import InputType, DumpType, Node, Pipeline
+from lwpipe import DumpType, InputType, Node, Pipeline
 from lwpipe.io import (
     dump_dict_pickle,
     dump_npy,
@@ -35,11 +34,11 @@ def divide(x):
     return x[:, : x.shape[1] // 2].mean(), x[:, x.shape[1] // 2].mean()
 
 
-def divide_multiply(x, y, n: int | float):
+def multiply_two_inputs(x, y, n: int | float):
     return x * n, y * n
 
 
-def ten_times(x, y):
+def ten_times_two_inputs(x, y):
     return x * 10, y * 10
 
 
@@ -48,7 +47,7 @@ def sum(x):
 
 
 @pytest.fixture
-def np_array():
+def np_array_2d():
     return np.arange(50).reshape((25, 2))
 
 
@@ -69,11 +68,11 @@ def test_simple():
     assert outputs_np == 78
 
 
-def test_output(np_array, tmp_path):
+def test_output(np_array_2d, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=np_array,
+            inputs=np_array_2d,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -83,7 +82,7 @@ def test_output(np_array, tmp_path):
             outputs_loader=load_pickle,
         ),
         Node(
-            func=ten_times,
+            func=ten_times_two_inputs,
         ),
     ]
 
@@ -91,11 +90,11 @@ def test_output(np_array, tmp_path):
     pipe.run()
 
 
-def test_base(np_array, tmp_path):
+def test_base(np_array_2d, tmp_path):
     nodes = [
         Node(
             func=mean,
-            inputs=np_array,
+            inputs=np_array_2d,
             outputs="mean",
             outputs_dumper=dump_pickle,
             outputs_path=tmp_path / "result1.pickle",
@@ -122,11 +121,11 @@ def test_base(np_array, tmp_path):
     pipe.run(2)
 
 
-def test_tuple_output(np_array, tmp_path):
+def test_tuple_output(np_array_2d, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=np_array,
+            inputs=np_array_2d,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -136,7 +135,7 @@ def test_tuple_output(np_array, tmp_path):
             outputs_loader=load_pickle,
         ),
         Node(
-            func=ten_times,
+            func=ten_times_two_inputs,
             inputs=("mean1", "mean2"),
             outputs_dumper=dump_npy,
             outputs_path=(
@@ -151,11 +150,11 @@ def test_tuple_output(np_array, tmp_path):
     pipe.run("ten_times")
 
 
-def test_in_out(np_array, tmp_path):
+def test_in_out(np_array_2d, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=np_array,
+            inputs=np_array_2d,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -165,7 +164,7 @@ def test_in_out(np_array, tmp_path):
             outputs_loader=load_pickle,
         ),
         Node(
-            func=divide_multiply,
+            func=multiply_two_inputs,
             inputs=("mean1", "mean2", 10),
             inputs_type=[
                 InputType.INTERIM_RESULT,
@@ -252,11 +251,11 @@ def test_no_name_error():
         Node(func=add_, inputs=10)
 
 
-def test_batch(np_array, tmp_path):
+def test_batch(np_array_2d, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=np_array,
+            inputs=np_array_2d,
             outputs=("mean_a", "mean_b"),
             outputs_dumper=dump_dict_pickle,
             outputs_dumper_type=DumpType.BATCH,
@@ -273,7 +272,7 @@ def test_batch(np_array, tmp_path):
             outputs_loader=load_dict_pickle,
         ),
         Node(
-            func=ten_times,
+            func=ten_times_two_inputs,
             outputs=("c", "d"),
             inputs=("a", "b"),
             outputs_dumper=dump_savez_compressed,

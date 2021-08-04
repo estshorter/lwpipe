@@ -32,7 +32,7 @@ def add(x, n: int | float):
 
 
 def divide(x):
-    return x[:10, :4].mean(), x[:20, :4].mean()
+    return x[:, : x.shape[1] // 2].mean(), x[:, x.shape[1] // 2].mean()
 
 
 def divide_multiply(x, y, n: int | float):
@@ -48,13 +48,8 @@ def sum(x):
 
 
 @pytest.fixture
-def iris():
-    return np.loadtxt(
-        Path(__file__).parent / "data/iris.csv",
-        skiprows=1,
-        usecols=[0, 1, 2, 3],
-        delimiter=",",
-    )
+def np_array():
+    return np.arange(50).reshape((25, 2))
 
 
 def test_simple():
@@ -74,11 +69,11 @@ def test_simple():
     assert outputs_np == 78
 
 
-def test_output(iris, tmp_path):
+def test_output(np_array, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=iris,
+            inputs=np_array,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -96,11 +91,11 @@ def test_output(iris, tmp_path):
     pipe.run()
 
 
-def test_base(iris, tmp_path):
+def test_base(np_array, tmp_path):
     nodes = [
         Node(
             func=mean,
-            inputs=iris,
+            inputs=np_array,
             outputs="mean",
             outputs_dumper=dump_pickle,
             outputs_path=tmp_path / "result1.pickle",
@@ -127,11 +122,11 @@ def test_base(iris, tmp_path):
     pipe.run(2)
 
 
-def test_tuple_output(iris, tmp_path):
+def test_tuple_output(np_array, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=iris,
+            inputs=np_array,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -156,11 +151,11 @@ def test_tuple_output(iris, tmp_path):
     pipe.run("ten_times")
 
 
-def test_in_out(iris, tmp_path):
+def test_in_out(np_array, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=iris,
+            inputs=np_array,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
@@ -257,11 +252,11 @@ def test_no_name_error():
         Node(func=add_, inputs=10)
 
 
-def test_batch(iris, tmp_path):
+def test_batch(np_array, tmp_path):
     nodes = [
         Node(
             func=divide,
-            inputs=iris,
+            inputs=np_array,
             outputs=("mean_a", "mean_b"),
             outputs_dumper=dump_dict_pickle,
             outputs_dumper_type=DumpType.BATCH,

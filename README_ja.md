@@ -145,4 +145,18 @@ outputs = pipe.run()
 assert outputs == (5, 6)
 ```
 
+Func with config example:
+```python
+from lwpipe import Node, Pipeline
+def add(a, cfg):
+    return a + cfg["hyperparam"]
+
+nodes = [Node(func=add, inputs=5, config={"hyperparam": 10})]
+# equivalent to
+# nodes = [Node(func=lambda a: add(a, {"hyperparam": 10}), inputs=5)]
+pipe = Pipeline(nodes)
+outputs = pipe.run()
+assert outputs[0] == 15
+```
+
 More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).

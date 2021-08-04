@@ -9,7 +9,7 @@ from .utils import _assert_same_length
 logger = logging.getLogger(__name__)
 
 
-__version__ = "2.0.1"
+__version__ = "2.1.0"
 
 
 class DumpType(IntEnum):
@@ -23,6 +23,7 @@ class Node:
         func: Callable,
         name: Optional[str] = None,
         inputs: str | list[str] | None = None,
+        config: dict = None,
         outputs: str | list[str] | None = None,
         outputs_dumper: Callable | list[Callable] | None = None,
         outputs_dumper_type: DumpType = DumpType.INDIVIDUAL,
@@ -37,6 +38,7 @@ class Node:
         inputs: 入力データ。パイプライン中の先頭ノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
                 先頭ノード以外のものにNoneを設定した場合は、前段の出力を入力として使うという設定になる。
                 文字列が渡されているときは、dict型のPipiline.resultsからその名前の中間結果を読もうとする。
+        config: funcに与えるconfig、Noneでなければfuncの引数の最後にこれが加わる
         outputs: 出力結果をdict型のPipiline.resultsに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
                         引数は(data, filepath: str | PurePath) を想定。
@@ -58,6 +60,8 @@ class Node:
 
         self.inputs = _convert_item_to_list(inputs)
         self.outputs = _convert_item_to_list(outputs)
+
+        self.config = config
 
         self.outputs_dumper = outputs_dumper
         self.outputs_dumper_type = outputs_dumper_type
@@ -127,14 +131,16 @@ class Pipeline:
             )
 
             # 最初のノードだけ特別扱い
+            args = []
             if idx == 0 and idx_start == 0:
                 if node.inputs is not None:
-                    outputs = node.func(*node.inputs)
-                else:
-                    outputs = node.func()
+                    args.extend(node.inputs)
             else:
-                inputs = self._get_inputs(node, outputs)
-                outputs = node.func(*inputs)
+                args.extend(self._get_inputs_from_previous_node(node, outputs))
+
+            if node.config is not None:
+                args.append(node.config)
+            outputs = node.func(*args)
 
             outputs = _convert_item_to_list(outputs)
             _assert_non_zero_length(outputs, "outputs")
@@ -248,7 +254,7 @@ class Pipeline:
             loaded_files_set.add(node_dep.outputs_path[idx_])
             self.results[input] = outputs_loaders[idx_](node_dep.outputs_path[idx_])
 
-    def _get_inputs(self, node, previous_outputs):
+    def _get_inputs_from_previous_node(self, node, previous_outputs):
         """前段までの入力を基に、次のNodeへの入力を決める"""
         # 入力がない場合は前段の結果を持ってくる
         if node.inputs is None:

@@ -290,3 +290,15 @@ def test_get_node_names():
     pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
     names = pipe.get_node_names()
     assert names == ["anonymous", "anonymous_2"]
+
+
+def test_config():
+    def add(a, cfg):
+        return a + cfg["hyperparam"]
+
+    nodes = [Node(func=add, inputs=5, config={"hyperparam": 10})]
+    # equivalent to
+    # nodes = [Node(func=lambda a: add(a, {"hyperparam": 10}), inputs=5)]
+    pipe = Pipeline(nodes)
+    outputs = pipe.run()
+    assert outputs[0] == 15

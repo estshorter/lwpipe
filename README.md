@@ -69,13 +69,13 @@ nodes = [
         outputs_loader=load_npy,
     ),
     Node(
-        func=lambda x: x.mean(),
+        func=np.mean,
         name="former_mean",
         inputs="former", # calculated at the first node
         outputs="former_mean",
     ),
     Node(
-        func=lambda x: x.mean(),
+        func=np.mean,
         name="latter_mean",
         inputs="latter", # calculated at the first node
         outputs="latter_mean",
@@ -89,7 +89,7 @@ assert outputs[0] == 7.0
 assert pipe.results["former_mean"] == 2.0
 ```
 
-batch dump example:
+batch dump example (return values are dumped to one file):
 ``` python
 import numpy as np
 from lwpipe import DumpType, Node, Pipeline

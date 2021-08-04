@@ -18,33 +18,13 @@ from lwpipe.io import (
 )
 
 
-def mean(x):
-    return x.mean()
-
-
-def multiply(x, n: int | float):
-    return x * n
-
-
-def add(x, n: int | float):
-    return x + n
-
-
 def divide(x):
     mid = x.shape[1] // 2
     return x[:, :mid], x[:, mid:]
 
 
-def multiply_two_inputs(x, y, n: int | float):
-    return x * n, y * n
-
-
 def ten_times_two_inputs(x, y):
     return x * 10, y * 10
-
-
-def sum(x):
-    return x.sum()
 
 
 @pytest.fixture
@@ -55,11 +35,11 @@ def np_array_2d():
 def test_simple(np_array_2d):
     nodes = [
         Node(
-            func=add,
+            func=np.add,
             inputs=(np_array_2d, 1),
         ),
         Node(
-            func=sum,
+            func=np.sum,
         ),
     ]
 
@@ -137,7 +117,7 @@ def test_base(np_array_2d, tmp_path):
 
     nodes = [
         Node(
-            func=mean,
+            func=np.mean,
             inputs=np_array_2d,
             outputs="mean",
             outputs_dumper=dump_pickle,
@@ -145,16 +125,15 @@ def test_base(np_array_2d, tmp_path):
             outputs_loader=load_pickle,
         ),
         Node(
-            func=lambda x: multiply(x, 10),
-            name=multiply.__name__,
+            func=lambda x: np.multiply(x, 10),
+            name=np.multiply,
             outputs="ntimes",
             outputs_dumper=dump_npy,
             outputs_path=result2,
             outputs_loader=load_npy,
         ),
         Node(
-            func=lambda x: add(x, 10),
-            name=add.__name__,
+            func=lambda x: x + 10,
             inputs="mean",
         ),
     ]
@@ -254,7 +233,7 @@ def test_resume_duplicate_name():
 
 
 def test_duplicate_name():
-    add_ = partial(add, n=1)
+    add_ = partial(np.add, 1)
     pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
     outputs = pipe.run()
     assert outputs[0] == 12
@@ -307,7 +286,7 @@ def test_batch(np_array_2d, tmp_path):
 
 
 def test_get_node_names():
-    add_ = partial(add, n=1)
+    add_ = partial(np.add, 1)
     pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
     names = pipe.get_node_names()
     assert names == ["anonymous", "anonymous_2"]

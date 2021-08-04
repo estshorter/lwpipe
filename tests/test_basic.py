@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from functools import partial
 
 import numpy as np
@@ -18,7 +19,7 @@ from lwpipe.io import (
 
 
 def mean(x):
-    return x[:, :4].mean()
+    return x.mean()
 
 
 def multiply(x, n: int | float):
@@ -30,7 +31,8 @@ def add(x, n: int | float):
 
 
 def divide(x):
-    return x[:, : x.shape[1] // 2].mean(), x[:, x.shape[1] // 2].mean()
+    mid = x.shape[1] // 2
+    return x[:, :mid], x[:, mid:]
 
 
 def multiply_two_inputs(x, y, n: int | float):
@@ -68,6 +70,8 @@ def test_simple(np_array_2d):
 
 
 def test_output(np_array_2d, tmp_path):
+    result1 = tmp_path / "result1.pickle"
+    result2 = tmp_path / "result2.pickle"
     nodes = [
         Node(
             func=divide,
@@ -75,28 +79,69 @@ def test_output(np_array_2d, tmp_path):
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
-                tmp_path / "result1.pickle",
-                tmp_path / "result2.pickle",
+                result1,
+                result2,
             ),
             outputs_loader=load_pickle,
         ),
         Node(
-            func=ten_times_two_inputs,
+            func=lambda x, y: (x.mean(), y.mean()),
         ),
     ]
 
     pipe = Pipeline(nodes)
+    outputs = pipe.run()
+    assert outputs == (24, 25)
+    assert result1.exists()
+    assert result2.exists()
+
+    outputs = pipe.run(1)
+    assert outputs == (24, 25)
+
+
+def test_ensure_read(np_array_2d, tmp_path):
+    result1 = tmp_path / "result1.pickle"
+    result2 = tmp_path / "result2.pickle"
+    nodes = [
+        Node(
+            func=divide,
+            inputs=np_array_2d,
+            outputs=("mean1", "mean2"),
+            outputs_dumper=dump_pickle,
+            outputs_path=(
+                result1,
+                result2,
+            ),
+            outputs_loader=load_pickle,
+        ),
+        Node(
+            func=lambda x, y: (x.mean(), y.mean()),
+        ),
+    ]
+
+    pipe = Pipeline(nodes)
+    outputs = pipe.run()
+    assert outputs == (24, 25)
+    os.remove(result1)
+    with pytest.raises(FileNotFoundError):
+        pipe.run(1)
     pipe.run()
+    os.remove(result2)
+    with pytest.raises(FileNotFoundError):
+        pipe.run(1)
 
 
 def test_base(np_array_2d, tmp_path):
+    result1 = tmp_path / "result1.pickle"
+    result2 = tmp_path / "result2.npy"
+
     nodes = [
         Node(
             func=mean,
             inputs=np_array_2d,
             outputs="mean",
             outputs_dumper=dump_pickle,
-            outputs_path=tmp_path / "result1.pickle",
+            outputs_path=result1,
             outputs_loader=load_pickle,
         ),
         Node(
@@ -104,7 +149,7 @@ def test_base(np_array_2d, tmp_path):
             name=multiply.__name__,
             outputs="ntimes",
             outputs_dumper=dump_npy,
-            outputs_path=tmp_path / "result_multiply.pickle",
+            outputs_path=result2,
             outputs_loader=load_npy,
         ),
         Node(
@@ -115,62 +160,49 @@ def test_base(np_array_2d, tmp_path):
     ]
 
     pipe = Pipeline(nodes)
-    pipe.run()
-    pipe.run(1)
-    pipe.run(2)
+    outputs1 = pipe.run()
+    assert result1.exists()
+    assert result2.exists()
+    outputs2 = pipe.run(1)
+    outputs3 = pipe.run(2)
+    assert outputs1 == outputs2
+    assert outputs2 == outputs3
 
 
 def test_tuple_output(np_array_2d, tmp_path):
+    mean1 = tmp_path / "divide1.pickle"
+    mean2 = tmp_path / "divide2.pickle"
+    mul1 = tmp_path / "mul1.npy"
+    mul2 = tmp_path / "mul2.npy"
+
     nodes = [
         Node(
             func=divide,
             inputs=np_array_2d,
-            outputs=("mean1", "mean2"),
+            outputs=("divide1", "divide2"),
             outputs_dumper=dump_pickle,
             outputs_path=(
-                tmp_path / "mean1.pickle",
-                tmp_path / "mean2_pickle",
+                mean1,
+                mean2,
             ),
             outputs_loader=load_pickle,
         ),
         Node(
             func=ten_times_two_inputs,
-            inputs=("mean1", "mean2"),
+            inputs=("divide1", "divide2"),
             outputs_dumper=dump_npy,
             outputs_path=(
-                tmp_path / "mul1.npy",
-                tmp_path / "mul2.npy",
+                mul1,
+                mul2,
             ),
         ),
     ]
 
     pipe = Pipeline(nodes)
-    pipe.run()
-    pipe.run(nodes[1].func.__name__)
-
-
-def test_in_out(np_array_2d, tmp_path):
-    nodes = [
-        Node(
-            func=divide,
-            inputs=np_array_2d,
-            outputs=("mean1", "mean2"),
-            outputs_dumper=dump_pickle,
-            outputs_path=(
-                tmp_path / "mean1",
-                tmp_path / "mean2",
-            ),
-            outputs_loader=load_pickle,
-        ),
-        Node(
-            func=partial(multiply_two_inputs, n=10),
-            inputs=("mean1", "mean2"),
-            name=multiply_two_inputs.__name__,
-        ),
-    ]
-
-    pipe = Pipeline(nodes)
-    pipe.run()
+    outputs = pipe.run()
+    outputs2 = pipe.run(nodes[1].func.__name__)
+    assert np.all(outputs[0] == outputs2[0])
+    assert np.all(outputs[1] == outputs2[1])
 
 
 def test_no_input_at_initial_node():
@@ -231,6 +263,9 @@ def test_duplicate_name():
 
 
 def test_batch(np_array_2d, tmp_path):
+    result1 = tmp_path / "1.pickle"
+    result2 = tmp_path / "2.pickle"
+    result3 = tmp_path / "3.npz"
     nodes = [
         Node(
             func=divide,
@@ -238,7 +273,7 @@ def test_batch(np_array_2d, tmp_path):
             outputs=("mean_a", "mean_b"),
             outputs_dumper=dump_dict_pickle,
             outputs_dumper_type=DumpType.BATCH,
-            outputs_path=tmp_path / "1.pickle",
+            outputs_path=result1,
             outputs_loader=load_dict_pickle,
         ),
         Node(
@@ -246,16 +281,15 @@ def test_batch(np_array_2d, tmp_path):
             outputs=("a", "b"),
             outputs_dumper=dump_dict_pickle,
             outputs_dumper_type=DumpType.BATCH,
-            outputs_path=tmp_path / "2.pickle",
+            outputs_path=result2,
             outputs_loader=load_dict_pickle,
         ),
         Node(
             func=ten_times_two_inputs,
-            inputs=("a", "b"),
             outputs=("c", "d"),
             outputs_dumper=dump_savez_compressed,
             outputs_dumper_type=DumpType.BATCH,
-            outputs_path=tmp_path / "3.npz",
+            outputs_path=result3,
             outputs_loader=load_savez_compressed,
         ),
         Node(
@@ -266,7 +300,9 @@ def test_batch(np_array_2d, tmp_path):
     pipe = Pipeline(nodes)
     pipe.run()
     pipe.run(1)
+    os.remove(result1)
     pipe.run(2)
+    os.remove(result2)
     pipe.run(3)
 
 

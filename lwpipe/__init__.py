@@ -4,6 +4,8 @@ import logging
 from enum import IntEnum, auto
 from typing import Callable, Optional
 
+from .utils import _assert_same_length
+
 logger = logging.getLogger(__name__)
 
 
@@ -275,13 +277,6 @@ class Pipeline:
 def _assert_non_zero_length(x, x_str):
     if len(x) == 0:
         raise ValueError(f"size of {x_str} is zero")
-
-
-def _assert_same_length(x, y, x_str, y_str):
-    if len(x) != len(y):
-        raise ValueError(
-            f"size of {x_str} ({len(x)}) is different from {y_str} ({len(y)})"
-        )
 
 
 def _convert_item_to_list(data, length=1) -> list | tuple | None:

@@ -34,10 +34,10 @@ class Node:
         ------------------
         func: 適用する関数。
         name: 関数の名前。Noneのときはfunc.__name__が代入される。__name__がなければ"anonymous"。
-        inputs: 入力データ。最初のノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
-                それ以外のノードでNoneを設定した場合は、前段の出力を入力として使うという設定になる。
+        inputs: 入力データ。パイプライン中の先頭ノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
+                先頭ノード以外のものにNoneを設定した場合は、前段の出力を入力として使うという設定になる。
                 文字列が渡されているときは、dict型のPipiline.resultsからその名前の中間結果を読もうとする。
-        outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
+        outputs: 出力結果をdict型のPipiline.resultsに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
                         引数は(data, filepath: str | PurePath) を想定。
                         outputs_dumper_typeがBATCHの際は、引数にデータのラベルを表すlist[str]が追加され、
@@ -51,11 +51,10 @@ class Node:
         self.func = func
         if name is not None:
             self.name = name
+        elif hasattr(func, "__name__"):
+            self.name = func.__name__
         else:
-            if hasattr(func, "__name__"):
-                self.name = func.__name__
-            else:
-                self.name = "anonymous"
+            self.name = "anonymous"
 
         self.inputs = _convert_item_to_list(inputs)
         self.outputs = _convert_item_to_list(outputs)
@@ -65,11 +64,11 @@ class Node:
         if outputs_dumper_type == DumpType.BATCH:
             if not callable(outputs_dumper):
                 raise ValueError(
-                    "For batch loader/dumper, outputs_dumper_type must be callable"
+                    "For batch loader/dumper, outputs_dumper must be callable"
                 )
             if (not callable(outputs_loader)) and outputs_loader is not None:
                 raise ValueError(
-                    "For batch loader/dumper, outputs_loader_type must be callable"
+                    "For batch loader/dumper, outputs_loader must be callable"
                 )
             if isinstance(outputs_path, list) or isinstance(outputs_path, tuple):
                 raise ValueError(
@@ -87,7 +86,7 @@ class Pipeline:
 
         # node.name -> index in self.nodes
         self.name_to_idx = dict()
-        # outputs -> (index in self.nodes, pos in node.outputs)
+        # outputs -> (index in self.nodes, index in node.outputs)
         self.outputs_to_indexes = dict()
 
         _assert_non_zero_length(nodes, "nodes")

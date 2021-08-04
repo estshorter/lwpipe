@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import io
 from functools import partial
 
 import numpy as np
@@ -220,25 +219,6 @@ def test_resume_duplicate_name():
     assert outputs[0] == 10000
     outputs = pipe.run(1)
     assert outputs[0] == 10000
-
-
-def test_pd_things():
-    csv = """1 2 3
-    4 5 6
-    7 8 9
-    """
-
-    file = io.StringIO(csv)
-    nodes = [
-        Node(
-            func=lambda x: x.mean(),
-            inputs=np.loadtxt(file),
-        )
-    ]
-
-    pipe = Pipeline(nodes)
-    outputs = pipe.run()
-    assert outputs[0] == 5.0
 
 
 def test_duplicate_name():

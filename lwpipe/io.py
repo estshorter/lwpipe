@@ -35,6 +35,7 @@ def load_pickle(filepath: str | PurePath):
 
 
 def dump_pickle(data, filepath: str | PurePath):
+    _make_dir(Path(filepath).parent)
     with open(filepath, "wb") as f:
         pickle.dump(data, f)
 
@@ -50,6 +51,7 @@ def load_dict_pickle(filepath: str | PurePath, datalabels):
 def dump_dict_pickle(datalist, filepath: str | PurePath, datalabels):
     _assert_same_length(datalabels, datalist, "datalabels", "datalist")
     datadict = {label: data for label, data in zip(datalabels, datalist)}
+    _make_dir(Path(filepath).parent)
     with open(filepath, "wb") as f:
         pickle.dump(datadict, f)
 

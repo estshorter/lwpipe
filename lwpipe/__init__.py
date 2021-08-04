@@ -40,13 +40,13 @@ class Node:
         name: 関数の名前。Noneのときはfunc.__name__が代入される。
         inputs: 入力データ。最初のノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
                 それ以外のノードでNoneを設定した場合は、前段の出力を入力として使うという設定になる。
-                文字列を渡されており、かつ、対応するinputs_typeがINTERIM_RESULT
-                のときは、この名前の中間結果を読もうとする。
+                文字列が渡されており、かつ、対応するinputs_typeがINTERIM_RESULT
+                のときは、この名前の中間結果を、dict型のPipiline.resultsから読もうとする。
         inputs_type: Pipeline内で計算した結果をfuncへの入力にしたい場合はINTERIM_RESULTに設定する。
                      それ以外の場合はNON_INTERIM_RESULT。最初のノードは強制的にNON_INTERIM_RESULTに設定される。
         outputs: 出力結果をdictに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
-                        outputs_dumper_typeがBATCHの際は、出力変数名用の引数が一つ追加される。
+                        outputs_dumper_typeがBATCHの際は、出力変数名用の引数がfuncの引数の最後に一つ追加される。
         outputs_dumper_type: 複数の出力を一つのファイルにまとめたいときはDumpType.BATCHを設定する。
         outputs_path: dumpするファイルパス。
         outputs_loader: dumpしたoutputsをloadするための関数。

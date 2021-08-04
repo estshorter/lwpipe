@@ -45,7 +45,7 @@ nodes = [
         outputs_path="interim_data.pickle",
         outputs_loader=load_pickle, # needed to bypass this node
     ),
-    Node(func=lambda x: x**2),
+    Node(func=lambda x: x**2, name="square"),
 ]
 
 pipe = Pipeline(nodes)

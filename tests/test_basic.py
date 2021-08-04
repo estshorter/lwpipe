@@ -51,11 +51,11 @@ def np_array_2d():
     return np.arange(50).reshape((25, 2))
 
 
-def test_simple():
+def test_simple(np_array_2d):
     nodes = [
         Node(
             func=add,
-            inputs=(np.arange(12).reshape(3, 4), 1),
+            inputs=(np_array_2d, 1),
         ),
         Node(
             func=sum,
@@ -65,7 +65,7 @@ def test_simple():
     pipe = Pipeline(nodes)
     outputs = pipe.run()
     outputs_np = outputs[0].tolist()
-    assert outputs_np == 78
+    assert outputs_np == 1275
 
 
 def test_output(np_array_2d, tmp_path):
@@ -147,7 +147,7 @@ def test_tuple_output(np_array_2d, tmp_path):
 
     pipe = Pipeline(nodes)
     pipe.run()
-    pipe.run("ten_times")
+    pipe.run(nodes[1].func.__name__)
 
 
 def test_in_out(np_array_2d, tmp_path):

@@ -268,3 +268,10 @@ def test_batch(np_array_2d, tmp_path):
     pipe.run(1)
     pipe.run(2)
     pipe.run(3)
+
+
+def test_get_node_names():
+    add_ = partial(add, n=1)
+    pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
+    names = pipe.get_node_names()
+    assert names == ["anonymous", "anonymous_2"]

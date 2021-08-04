@@ -105,8 +105,15 @@ class Pipeline:
                     raise ValueError(f"node.output {output} is not unique")
                 self.outputs_to_indexes[output] = (idx, idx_outputs)
 
+    def get_node_names(self) -> list[str]:
+        return [node.name for node in self.nodes]
+
     def run(self, start: int | str = 0):
-        """pipelineを実行する。戻り値はlist。"""
+        """pipelineを実行する。戻り値はlist。
+        Parameters
+        ----------------
+        start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能。
+        """
         idx_start = self._get_start_index(start)
         logger.info(
             f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_start:])} tasks"

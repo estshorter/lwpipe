@@ -1,3 +1,7 @@
+[![PyPI version](https://badge.fury.io/py/lwpipe.svg)](https://badge.fury.io/py/lwpipe)
+[![license](https://img.shields.io/pypi/l/lwpipe)](https://github.com/estshorter/lwpipe/blob/master/LICENSE)
+[![python](https://img.shields.io/pypi/pyversions/lwpipe)](https://badge.fury.io/py/lwpipe)
+
 # Overview
 lwpipeは数値実験用のパイプラインを提供するモジュールであり、
 例えば、機械学習における前処理手順に適用可能です。

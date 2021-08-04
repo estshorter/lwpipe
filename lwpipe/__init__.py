@@ -180,7 +180,7 @@ class Pipeline:
                     self.nodes[idx_ - 1], loaded_files_set
                 )
             else:  # 前段より前の出力を入力にする場合
-                self._load_past_output(idx_, idx_start, loaded_files_set)
+                self._load_past_output(self.nodes[idx_], idx_start, loaded_files_set)
         return last_output
 
     def _load_last_output(self, node_prev, loaded_files_set):
@@ -208,8 +208,8 @@ class Pipeline:
             outputs.append(outputs_loader(output_path))
         return outputs
 
-    def _load_past_output(self, idx, idx_start, loaded_files_set):
-        for input in self.nodes[idx].inputs:
+    def _load_past_output(self, node, idx_start, loaded_files_set):
+        for input in node.inputs:
             idx_dependant_node, idx_in_outputs = self.outputs_to_indexes[input]
             if idx_dependant_node >= idx_start:
                 # まだ計算していないのでcontinue
@@ -224,6 +224,12 @@ class Pipeline:
                 outputs = node_dep.outputs_loader(
                     *node_dep.outputs_path, node_dep.outputs
                 )
+                _assert_same_length(
+                    node_dep.outputs,
+                    outputs,
+                    "node_dep.outputs",
+                    "outputs",
+                )
                 for output_key, output in zip(node_dep.outputs, outputs):
                     self.results[output_key] = output
                 continue
@@ -234,14 +240,14 @@ class Pipeline:
             _assert_same_length(
                 node_dep.outputs,
                 outputs_loaders,
-                "node_prev.outputs",
+                "node_dep.outputs",
                 "outputs_loaders",
             )
-            idx = idx_in_outputs
-            if node_dep.outputs_path[idx] in loaded_files_set:
-                return
-            loaded_files_set.add(node_dep.outputs_path[idx])
-            self.results[input] = outputs_loaders[idx](node_dep.outputs_path[idx])
+            idx_ = idx_in_outputs
+            if node_dep.outputs_path[idx_] in loaded_files_set:
+                continue
+            loaded_files_set.add(node_dep.outputs_path[idx_])
+            self.results[input] = outputs_loaders[idx_](node_dep.outputs_path[idx_])
 
     def _get_inputs(self, node, previous_outputs):
         """前段までの入力を基に、次のNodeへの入力を決める"""
@@ -251,12 +257,8 @@ class Pipeline:
                 raise ValueError("inputs is None")
             return previous_outputs
 
-        inputs = []
         _assert_non_zero_length(node.inputs, "node.inputs")
-
-        for input in node.inputs:
-            inputs.append(self.results[input])
-        return inputs
+        return [self.results[input] for input in node.inputs]
 
     def _insert_outputs_to_dict(self, node, outputs):
         if node.outputs is None:

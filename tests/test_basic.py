@@ -244,7 +244,8 @@ def test_pd_things():
 def test_duplicate_name():
     add_ = partial(add, n=1)
     pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
-    pipe.run()
+    outputs = pipe.run()
+    assert outputs[0] == 12
     assert pipe.nodes[0].name == "anonymous"
     assert pipe.nodes[1].name == "anonymous_2"
 

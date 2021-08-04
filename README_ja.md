@@ -95,56 +95,51 @@ assert pipe.results["former_mean"] == 2.0
 
 batch dump example:
 ``` python
-import io
-import pandas as pd
+import numpy as np
 from lwpipe import DumpType, Node, Pipeline
-from lwpipe.io import dump_dict_pickle, dump_savez_compressed, load_dict_pickle
+from lwpipe.io import (
+    dump_dict_pickle,
+    dump_savez_compressed,
+    load_dict_pickle,
+    load_savez_compressed,
+)
 
-csv = """A,B,C
-1,2
-3,4
-5,6
-"""
+def divide(x):
+    return x[:, 0], x[:, 1]
 
-def divide(x: pd.DataFrame):
-    return x.iloc[:, 0], x.iloc[:, 1]
+nodes = [
+    Node(
+        func=divide,
+        inputs=np.arange(1, 7).reshape((3, 2)),
+        outputs=("mean_a", "mean_b"),
+        outputs_dumper=dump_dict_pickle,
+        outputs_dumper_type=DumpType.BATCH,
+        outputs_path="1.pickle",
+        outputs_loader=load_dict_pickle,
+    ),
+    Node(
+        func=lambda x, y: (x, y),
+        name="2",
+        outputs=("a", "b"),
+        outputs_dumper=dump_dict_pickle,
+        outputs_dumper_type=DumpType.BATCH,
+        outputs_path="2.pickle",
+        outputs_loader=load_dict_pickle,
+    ),
+    Node(
+        func=lambda x, y: (x.max(), y.max()),
+        outputs=("c", "d"),
+        inputs=("a", "b"),
+        outputs_dumper=dump_savez_compressed,
+        outputs_dumper_type=DumpType.BATCH,
+        outputs_path="3.npz",
+        outputs_loader=load_savez_compressed,
+    )
+]
 
-with io.StringIO(csv) as f:
-    nodes = [
-        Node(
-            func=divide,
-            inputs=pd.read_csv(f),
-            outputs=("mean_a", "mean_b"),
-            outputs_dumper=dump_dict_pickle,
-            outputs_dumper_type=DumpType.BATCH,
-            outputs_path="1.pickle",
-            outputs_loader=load_dict_pickle,
-        ),
-        Node(
-            func=lambda x, y: (x, y),
-            name="2",
-            outputs=("a", "b"),
-            outputs_dumper=dump_dict_pickle,
-            outputs_dumper_type=DumpType.BATCH,
-            outputs_path="2.pickle",
-            outputs_loader=load_dict_pickle,
-        ),
-        Node(
-            func=lambda x, y: (x.max(), y.max()),
-            outputs=("c", "d"),
-            inputs=("a", "b"),
-            outputs_dumper=dump_savez_compressed,
-            outputs_dumper_type=DumpType.BATCH,
-            outputs_path="3.npz",
-        ),
-        Node(
-            func=lambda x, y: (x, y),
-        ),
-    ]
-
-    pipe = Pipeline(nodes)
-    outputs = pipe.run()
-    assert outputs == (5, 6)
+pipe = Pipeline(nodes)
+outputs = pipe.run()
+assert outputs == (5, 6)
 ```
 
 More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).

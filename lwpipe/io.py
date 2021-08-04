@@ -29,13 +29,6 @@ if importlib.util.find_spec("numpy"):
         np.savez_compressed(filepath, **datadict)
 
 
-if importlib.util.find_spec("pandas"):
-    import pandas as pd
-
-    def load_csv_as_dataframe(filepath: str | PurePath):
-        return pd.read_csv(filepath)
-
-
 def load_pickle(filepath: str | PurePath):
     with open(filepath, "rb") as f:
         return pickle.load(f)

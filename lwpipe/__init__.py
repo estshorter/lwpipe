@@ -102,11 +102,17 @@ class Pipeline:
         name_duplicate_counter = {}
 
         for idx, node in enumerate(self.nodes):
-            if node.name in self.name_to_idx:
-                name_duplicate_counter[node.name] += 1
-                node.name += f"_{name_duplicate_counter[node.name]}"
-            else:
+            if node.name not in self.name_to_idx:
                 name_duplicate_counter[node.name] = 1
+            else:
+                name_duplicate_counter[node.name] += 1
+                node.name += f"__{name_duplicate_counter[node.name]}__"
+                if node.name not in self.name_to_idx:
+                    name_duplicate_counter[node.name] = 1
+                else:
+                    raise ValueError(
+                        f"name: {node.name} is duplicated. Consider change name"
+                    )
             self.name_to_idx[node.name] = idx
             if node.outputs is None:
                 continue
@@ -145,7 +151,7 @@ class Pipeline:
             )
 
         logger.info(
-            f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_from:idx_to+1])} tasks"
+            f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_from:idx_to+1])} tasks."
         )
         outputs = self._load_interim_output()
         for idx, node in enumerate(self.nodes[idx_from : idx_to + 1]):

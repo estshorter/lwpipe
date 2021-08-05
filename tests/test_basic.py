@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from functools import partial
+from pathlib import Path
 
 import numpy as np
 import pytest
@@ -302,3 +303,61 @@ def test_config():
     pipe = Pipeline(nodes)
     outputs = pipe.run()
     assert outputs[0] == 15
+
+
+def test_dumper_config(tmp_path):
+    def add(a, cfg):
+        return a
+
+    def dumper(data, filepath, cfg):
+        filepath = Path(filepath)
+        filepath = filepath.with_name(cfg["suffix"])
+        return dump_pickle(data, filepath)
+
+    def dumper_batch(data, filepath, datalabels, cfg):
+        filepath = Path(filepath)
+        filepath = filepath.with_name(cfg["suffix"])
+        return dump_dict_pickle(data, filepath, datalabels)
+
+    result1 = tmp_path / "result1.pickle"
+    result2 = tmp_path / "result2.pickle"
+    nodes = [
+        Node(func=add, inputs=1, config={"suffix": "_TEST_"}),
+        Node(
+            func=lambda a, cfg: a,
+            outputs_dumper=dumper_batch,
+            outputs_dumper_take_config=True,
+            config={"suffix": "_TEST_"},
+            outputs="hoge",
+            outputs_dumper_type=DumpType.BATCH,
+            outputs_path=result2,
+            outputs_loader=load_savez_compressed,
+        ),
+    ]
+    pipe = Pipeline(nodes)
+
+    pipe.run()
+    assert result1.with_name("_TEST_").exists()
+    assert result2.with_name("_TEST_").exists()
+
+
+def test_kidou(tmp_path):
+    result1 = tmp_path / "result1.pickle"
+
+    nodes = [
+        Node(
+            func=np.add,
+            inputs=(1, 2),
+            outputs_dumper=dump_pickle,
+            outputs_path=result1,
+            outputs_loader=load_pickle,
+        ),
+        Node(func=lambda x: x * 10),
+        Node(func=lambda x: x * 10),
+    ]
+    pipe = Pipeline(nodes)
+
+    pipe.run()
+    pipe.run(1)
+    with pytest.raises(ValueError):
+        pipe.run(2)

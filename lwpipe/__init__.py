@@ -9,7 +9,7 @@ from .utils import _assert_same_length
 logger = logging.getLogger(__name__)
 
 
-__version__ = "2.1.0"
+__version__ = "2.2.0"
 
 
 class DumpType(IntEnum):
@@ -27,6 +27,7 @@ class Node:
         outputs: str | list[str] | None = None,
         outputs_dumper: Callable | list[Callable] | None = None,
         outputs_dumper_type: DumpType = DumpType.INDIVIDUAL,
+        outputs_dumper_take_config: bool = False,
         outputs_path: Optional[list[str]] = None,
         outputs_loader: Callable | list[Callable] | None = None,
     ) -> None:
@@ -46,6 +47,7 @@ class Node:
                         (datalist, filepath: str | PurePath, datalabels)
                         となる。
         outputs_dumper_type: 複数の出力データを一つのファイルに保存したいときはDumpType.BATCHを設定する。
+        outputs_dumper_take_config: outputs_dumperがconfigを最後の引数にとるならTrueに設定する。
         outputs_path: dumpするファイルパス。
         outputs_loader: dumpしたoutputsをloadするための関数。
                         pipelineを途中から実行する場合、中間結果をloadする必要があるが、その際にコールされる。
@@ -65,6 +67,7 @@ class Node:
 
         self.outputs_dumper = outputs_dumper
         self.outputs_dumper_type = outputs_dumper_type
+        self.outputs_dumper_take_config = outputs_dumper_take_config
         if outputs_dumper_type == DumpType.BATCH:
             if not callable(outputs_dumper):
                 raise ValueError(
@@ -121,10 +124,11 @@ class Pipeline:
         start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能。
         """
         idx_start = self._get_start_index(start)
+        self.idx_start = idx_start
         logger.info(
             f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_start:])} tasks"
         )
-        outputs = self._load_interim_output(idx_start)
+        outputs = self._load_interim_output()
         for idx, node in enumerate(self.nodes[idx_start:]):
             logger.info(
                 f"Running {idx+1}/{len(self.nodes[idx_start:])} tasks ({node.name})"
@@ -163,32 +167,39 @@ class Pipeline:
 
         return idx_start
 
-    def _load_interim_output(self, idx_start):
+    def _load_interim_output(self):
         """
         idx_startから最後のノードまでのノードに対し、
         idx_startより前のノードの結果を使うかチェックし、
         もし使うのであれば必要な結果をロードする。
         """
-        if idx_start == 0:
+        if self.idx_start == 0:
             return None
         last_output = None
         loaded_files_set = set()
         # idx_startから読み込むこと
         # さもないと直前のノードの入力が2回読まれる可能性がある
-        for idx_ in range(idx_start, len(self.nodes)):
+        for idx_ in range(self.idx_start, len(self.nodes)):
             # 入力が指定されていない場合（前段の出力を入力とする場合）
             if self.nodes[idx_].inputs is None:
                 # idx_start以降のタスクはまだ計算していないのでcontinue
-                if idx_ > idx_start:
+                if idx_ > self.idx_start:
                     continue
                 last_output = self._load_last_output(
-                    self.nodes[idx_ - 1], loaded_files_set
+                    self.nodes[idx_ - 1],
+                    loaded_files_set,
+                    idx_ - 1,
                 )
             else:  # 前段より前の出力を入力にする場合
-                self._load_past_output(self.nodes[idx_], idx_start, loaded_files_set)
+                self._load_past_output(self.nodes[idx_], loaded_files_set)
         return last_output
 
-    def _load_last_output(self, node_prev, loaded_files_set):
+    def _load_last_output(self, node_prev, loaded_files_set, idx):
+        if node_prev.outputs_loader is None:
+            raise ValueError(
+                f"outputs loader of node {node_prev.name} (index: {idx}) is not set."
+            )
+
         # 本関数はrange(idx_start, len(self.nodes)): のループの最初に実行されるので、
         # outputs_loaderの呼び出しが冗長ではない
         if node_prev.outputs_loader_type == DumpType.BATCH:
@@ -213,10 +224,10 @@ class Pipeline:
             outputs.append(outputs_loader(output_path))
         return outputs
 
-    def _load_past_output(self, node, idx_start, loaded_files_set):
+    def _load_past_output(self, node, loaded_files_set):
         for input in node.inputs:
             idx_dependant_node, idx_in_outputs = self.outputs_to_indexes[input]
-            if idx_dependant_node >= idx_start:
+            if idx_dependant_node >= self.idx_start:
                 # まだ計算していないのでcontinue
                 continue
 
@@ -279,7 +290,10 @@ class Pipeline:
             return
 
         if node.outputs_dumper_type == DumpType.BATCH:
-            return node.outputs_dumper(outputs, *node.outputs_path, node.outputs)
+            args = [outputs, *node.outputs_path, node.outputs]
+            if node.outputs_dumper_take_config:
+                args.append(node.config)
+            return node.outputs_dumper(*args)
 
         _assert_same_length(outputs, node.outputs_path, "outputs", "node.outputs_path")
         outputs_dumpers = _convert_item_to_list(node.outputs_dumper, len(outputs))
@@ -288,7 +302,10 @@ class Pipeline:
             outputs, node.outputs_path, outputs_dumpers
         ):
             if outputs_dumper is not None:
-                outputs_dumper(output, filepath)
+                args = [output, filepath]
+                if node.outputs_dumper_take_config:
+                    args.append(node.config)
+                outputs_dumper(*args)
 
 
 def _assert_non_zero_length(x, x_str):

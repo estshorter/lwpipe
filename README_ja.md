@@ -170,6 +170,9 @@ def func():
 funcs = [func, func]
 pipe = TrivialPipeline(funcs)
 pipe.run()
+# equivalent to
+# for func in funcs:
+#   func()
 
 # you can specify names of functions
 pipe = TrivialPipeline(funcs, names=["func1", "func2"])

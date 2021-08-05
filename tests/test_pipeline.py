@@ -239,7 +239,7 @@ def test_duplicate_name():
     outputs = pipe.run()
     assert outputs[0] == 12
     assert pipe.nodes[0].name == "anonymous"
-    assert pipe.nodes[1].name == "anonymous_2"
+    assert pipe.nodes[1].name == "anonymous__2__"
 
 
 def test_batch(np_array_2d, tmp_path):
@@ -290,7 +290,7 @@ def test_get_node_names():
     add_ = partial(np.add, 1)
     pipe = Pipeline([Node(func=add_, inputs=10), Node(func=add_)])
     names = pipe.get_node_names()
-    assert names == ["anonymous", "anonymous_2"]
+    assert names == ["anonymous", "anonymous__2__"]
 
 
 def test_config():

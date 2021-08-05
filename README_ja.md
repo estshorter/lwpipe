@@ -159,4 +159,16 @@ outputs = pipe.run()
 assert outputs[0] == 15
 ```
 
+This module also provides `TrivialPipeline` which just sequentially call functions:
+```python
+from lwpipe import TrivialPipeline
+
+def func():
+    return
+
+funcs = [func, func]
+pipe = TrivialPipeline(funcs)
+pipe.run()
+```
+
 More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import logging
 from enum import IntEnum, auto
+from inspect import signature
 from typing import Callable, Optional
 
 from .utils import _assert_same_length
@@ -158,13 +159,17 @@ class Pipeline:
                 if node.inputs is not None:
                     args.extend(node.inputs)
             else:
-                args.extend(self._get_inputs_from_previous_node(node, outputs))
+                inputs = self._get_inputs_from_previous_node(node, outputs)
+                if inputs is not None:
+                    args.extend(inputs)
 
             if node.config is not None:
                 args.append(node.config)
             outputs = node.func(*args)
 
             outputs = _convert_item_to_list(outputs)
+            if outputs is None:
+                continue
             _assert_non_zero_length(outputs, "outputs")
             self._insert_outputs_to_dict(node, outputs)
             self._dump_outputs(node, outputs)
@@ -176,7 +181,12 @@ class Pipeline:
         if isinstance(start_or_end, int):
             idx = start_or_end
         elif isinstance(start_or_end, str):
-            idx = self.name_to_idx[start_or_end]
+            try:
+                idx = self.name_to_idx[start_or_end]
+            except KeyError:
+                raise ValueError(
+                    f"specified {start_or_end_str} node ({start_or_end}) is not found"
+                )
 
         if idx < 0 or idx >= len(self.nodes):
             raise ValueError(
@@ -197,6 +207,13 @@ class Pipeline:
         # idx_fromから読み込むこと
         # さもないと直前のノードの入力が2回読まれる可能性がある
         for idx_ in range(self.idx_from, len(self.nodes)):
+            # 関数の引数がゼロ個の時は何もしない
+            num_param_when_no_inputs = 0 if self.nodes[idx_].config is None else 1
+            if (
+                len(signature(self.nodes[idx_].func).parameters)
+                == num_param_when_no_inputs
+            ):
+                continue
             # 入力が指定されていない場合（前段の出力を入力とする場合）
             if self.nodes[idx_].inputs is None:
                 # idx_from以降のタスクはまだ計算していないのでcontinue
@@ -286,8 +303,8 @@ class Pipeline:
         """前段までの入力を基に、次のNodeへの入力を決める"""
         # 入力がない場合は前段の結果を持ってくる
         if node.inputs is None:
-            if previous_outputs is None:
-                raise ValueError("inputs is None")
+            # if previous_outputs is None:
+            #     raise ValueError("inputs is None")
             return previous_outputs
 
         _assert_non_zero_length(node.inputs, "node.inputs")

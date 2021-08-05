@@ -354,10 +354,22 @@ class TrivialPipeline:
     データの受渡しは行わない。
     """
 
-    def __init__(self, funcs: list[Callable]) -> None:
+    def __init__(self, funcs: list[Callable], names: list[str] = None) -> None:
+        """
+        Parameters
+        --------------
+        funcs: 呼び出される関数群
+        names: 関数の名前
+        """
         self.funcs = funcs
-        self.names = []
+        if names is not None:
+            _assert_same_length(funcs, names, "funcs", "names")
+            if len(names) != len(set(names)):
+                raise ValueError(f"names is not unique: {names}")
+            self.names = names
+            return
 
+        self.names = []
         name_duplicate_counter = {}
 
         for func in self.funcs:

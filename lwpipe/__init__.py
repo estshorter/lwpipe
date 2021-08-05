@@ -151,7 +151,7 @@ class Pipeline:
             )
 
         logger.info(
-            f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_from:idx_to+1])} tasks."
+            f"Scheduled {len(self.nodes)} tasks, {len(self.nodes[idx_from:idx_to+1])} tasks in total"
         )
         outputs = self._load_interim_output()
         for idx, node in enumerate(self.nodes[idx_from : idx_to + 1]):
@@ -180,7 +180,7 @@ class Pipeline:
             self._insert_outputs_to_dict(node, outputs)
             self._dump_outputs(node, outputs)
 
-        logger.info("All tasks have been completed")
+        logger.info("Completed all tasks")
         return outputs
 
     def _get_start_or_end_index(self, start_or_end: int | str, start_or_end_str: str):
@@ -408,14 +408,16 @@ class TrivialPipeline:
             raise ValueError(f"0 <= to({to_}) <= {len(self.funcs)-1} must be satisfied")
 
         logger.info(
-            f"Scheduled {len(self.funcs[from_:to_+1])} tasks, Total {len(self.funcs)} tasks."
+            f"Scheduled {len(self.funcs[from_:to_+1])} tasks, {len(self.funcs)} tasks in total"
         )
-        for idx, func in enumerate(self.funcs[from_ : to_ + 1]):
+        for idx, (func, name) in enumerate(
+            zip(self.funcs[from_ : to_ + 1], self.names[from_ : to_ + 1])
+        ):
             logger.info(
-                f"Running {idx+1}/{len(self.funcs[from_:to_+1])} tasks ({self.names[idx]})"
+                f"Running {idx+1}/{len(self.funcs[from_:to_+1])} tasks ({name})"
             )
             func()
-        logger.info("All tasks have been completed!")
+        logger.info("Completed all tasks!")
 
 
 def _assert_non_zero_length(x, x_str):

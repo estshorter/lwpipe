@@ -6,7 +6,9 @@
 **lwpipe** provides a lightweight pipeline for numerical experiments.
 For example, this module can be used in preprocessing steps of machine learning. Preprocessing consists of several steps, some of which take time to execute. In this case, it is common in the trial-and-error stage, such as numerical experiments, to dump the calculation results of the computationally-intensive steps and load them in the later programs to reduce the time required when the later steps are changed. This module reduces boilerplate code for file IO in the use cases above.
 
-Note that pipelines in this module do not have the concept of dependency between nodes (tasks), and nodes are executed sequentially.
+Note that 
+ - pipelines in this module do not have the concept of dependency between nodes (tasks), and nodes are executed sequentially.
+ - lwpipe is highly inspired by [Kedro](https://github.com/quantumblacklabs/kedro).
 
 # Installation
 from pypi: 

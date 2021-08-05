@@ -10,7 +10,7 @@ from .utils import _assert_same_length
 logger = logging.getLogger(__name__)
 
 
-__version__ = "3.0.0"
+__version__ = "4.0.0"
 
 
 class DumpType(IntEnum):
@@ -22,10 +22,10 @@ class Node:
     def __init__(
         self,
         func: Callable,
-        name: Optional[str] = None,
         inputs: str | list[str] | None = None,
-        config: dict = None,
         outputs: str | list[str] | None = None,
+        name: Optional[str] = None,
+        config: dict = None,
         outputs_dumper: Callable | list[Callable] | None = None,
         outputs_dumper_type: DumpType = DumpType.INDIVIDUAL,
         outputs_dumper_take_config: bool = False,
@@ -36,12 +36,12 @@ class Node:
         Parameters
         ------------------
         func: 適用する関数。
-        name: 関数の名前。Noneのときはfunc.__name__が代入される。__name__がなければ"anonymous"。
         inputs: 入力データ。パイプライン中の先頭ノードに対しNoneを設定すると、引数0個の関数をfuncにセットできる。
                 先頭ノード以外のものにNoneを設定した場合は、前段の出力を入力として使うという設定になる。
                 文字列が渡されているときは、dict型のPipiline.resultsからその名前の中間結果を読もうとする。
-        config: funcに与えるconfig、Noneでなければfuncの引数の最後にこれが加わる
         outputs: 出力結果をdict型のPipiline.resultsに入れる際のキー。Noneにすると保存されず、次のノードに渡されるのみとなる。
+        name: 関数の名前。Noneのときはfunc.__name__が代入される。__name__がなければ"anonymous"。
+        config: funcに与えるconfig、Noneでなければfuncの引数の最後にこれが加わる
         outputs_dumper: outputsをdumpする関数。リストを渡せば、各変数に対して別々の関数を適用可能。
                         引数は(data, filepath: str | PurePath) を想定。
                         outputs_dumper_typeがBATCHの際は、引数にデータのラベルを表すlist[str]が追加され、

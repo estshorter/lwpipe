@@ -6,7 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from lwpipe import DumpType, Node, Pipeline
+from lwpipe import DumpType, Node, Pipeline, TrivialPipeline
 from lwpipe.io import (
     dump_dict_pickle,
     dump_npy,
@@ -374,3 +374,48 @@ def test_inputs_not_found():
 
     with pytest.raises(ValueError):
         Pipeline(nodes)
+
+
+def test_trivial_pipeline():
+    def no_op():
+        return
+
+    funcs = [no_op, no_op]
+    pipe = TrivialPipeline(funcs)
+    pipe.run()
+    pipe.run(1, 1)
+    pipe.run(0, 1)
+    with pytest.raises(ValueError):
+        pipe.run(0, 2)
+    with pytest.raises(ValueError):
+        pipe.run(1, 0)
+    with pytest.raises(ValueError):
+        pipe.run(2, 2)
+
+
+def test_to_from(tmp_path):
+    def no_op(a):
+        return a
+
+    pipe = Pipeline(
+        [
+            Node(
+                func=no_op,
+                inputs=1,
+                outputs_dumper=dump_pickle,
+                outputs_path=tmp_path / "result1.pickle",
+                outputs_loader=load_pickle,
+            ),
+            Node(func=no_op),
+            Node(func=no_op),
+        ]
+    )
+    pipe.run()
+    pipe.run(1, 1)
+    pipe.run(0, 1)
+    with pytest.raises(ValueError):
+        pipe.run(0, 3)
+    with pytest.raises(ValueError):
+        pipe.run(1, 0)
+    with pytest.raises(ValueError):
+        pipe.run(4, 5)

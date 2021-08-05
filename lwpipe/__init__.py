@@ -126,26 +126,35 @@ class Pipeline:
     def get_node_names(self) -> list[str]:
         return [node.name for node in self.nodes]
 
-    def run(self, start: int | str = 0):
+    def run(self, from_: int | str = 0, to_: int | str | None = None):
         """pipelineを実行する。戻り値はlist。
         Parameters
         ----------------
         start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能。
+        end: どのノードのまでパイプラインを実行するか。インデックスかnameで指定可能。
         """
-        idx_start = self._get_start_index(start)
-        self.idx_start = idx_start
+        if to_ is None:
+            to_ = len(self.nodes) - 1
+        idx_from = self._get_start_or_end_index(from_, "start")
+        self.idx_from = idx_from
+        idx_to = self._get_start_or_end_index(to_, "end")
+        if idx_from > idx_to:
+            raise ValueError(
+                f"idx_from must satisfy idx_from ({idx_from}) <= idx_to ({idx_to})"
+            )
+
         logger.info(
-            f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_start:])} tasks"
+            f"Total {len(self.nodes)} tasks, scheduled {len(self.nodes[idx_from:idx_to+1])} tasks"
         )
         outputs = self._load_interim_output()
-        for idx, node in enumerate(self.nodes[idx_start:]):
+        for idx, node in enumerate(self.nodes[idx_from : idx_to + 1]):
             logger.info(
-                f"Running {idx+1}/{len(self.nodes[idx_start:])} tasks ({node.name})"
+                f"Running {idx+1}/{len(self.nodes[idx_from:idx_to+1])} tasks ({node.name})"
             )
 
             # 最初のノードだけ特別扱い
             args = []
-            if idx == 0 and idx_start == 0:
+            if idx == 0 and idx_from == 0:
                 if node.inputs is not None:
                     args.extend(node.inputs)
             else:
@@ -160,39 +169,38 @@ class Pipeline:
             self._insert_outputs_to_dict(node, outputs)
             self._dump_outputs(node, outputs)
 
-        logger.info("All tasks completed")
+        logger.info("All tasks have been completed")
         return outputs
 
-    def _get_start_index(self, start: int | str):
-        if isinstance(start, int):
-            idx_start = start
-        elif isinstance(start, str):
-            idx_start = self.name_to_idx[start]
+    def _get_start_or_end_index(self, start_or_end: int | str, start_or_end_str: str):
+        if isinstance(start_or_end, int):
+            idx = start_or_end
+        elif isinstance(start_or_end, str):
+            idx = self.name_to_idx[start_or_end]
 
-        if idx_start < 0 or idx_start >= len(self.nodes):
+        if idx < 0 or idx >= len(self.nodes):
             raise ValueError(
-                f"Wrong argument: idx_start ({idx_start}) must satisfy 0 <= start < {len(self.node)-1}"
+                f"0 <= {start_or_end_str} ({idx}) <= {len(self.nodes)-1} must be satisfied"
             )
-
-        return idx_start
+        return idx
 
     def _load_interim_output(self):
         """
-        idx_startから最後のノードまでのノードに対し、
-        idx_startより前のノードの結果を使うかチェックし、
+        idx_fromから最後のノードまでのノードに対し、
+        idx_fromより前のノードの結果を使うかチェックし、
         もし使うのであれば必要な結果をロードする。
         """
-        if self.idx_start == 0:
+        if self.idx_from == 0:
             return None
         last_output = None
         loaded_files_set = set()
-        # idx_startから読み込むこと
+        # idx_fromから読み込むこと
         # さもないと直前のノードの入力が2回読まれる可能性がある
-        for idx_ in range(self.idx_start, len(self.nodes)):
+        for idx_ in range(self.idx_from, len(self.nodes)):
             # 入力が指定されていない場合（前段の出力を入力とする場合）
             if self.nodes[idx_].inputs is None:
-                # idx_start以降のタスクはまだ計算していないのでcontinue
-                if idx_ > self.idx_start:
+                # idx_from以降のタスクはまだ計算していないのでcontinue
+                if idx_ > self.idx_from:
                     continue
                 last_output = self._load_last_output(
                     self.nodes[idx_ - 1],
@@ -209,7 +217,7 @@ class Pipeline:
                 f"outputs loader of node {node_prev.name} (index: {idx}) is not set."
             )
 
-        # 本関数はrange(idx_start, len(self.nodes)): のループの最初に実行されるので、
+        # 本関数はrange(idx_from, len(self.nodes)): のループの最初に実行されるので、
         # outputs_loaderの呼び出しが冗長ではない
         if node_prev.outputs_loader_type == DumpType.BATCH:
             loaded_files_set.add(*node_prev.outputs_path)
@@ -236,7 +244,7 @@ class Pipeline:
     def _load_past_output(self, node, loaded_files_set):
         for input in node.inputs:
             idx_dependant_node, idx_in_outputs = self.outputs_to_indexes[input]
-            if idx_dependant_node >= self.idx_start:
+            if idx_dependant_node >= self.idx_from:
                 # まだ計算していないのでcontinue
                 continue
 

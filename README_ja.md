@@ -179,4 +179,4 @@ pipe = TrivialPipeline(funcs, names=["func1", "func2"])
 pipe.run()
 ```
 
-More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_basic.py).
+More examples are included in the [test cases](https://github.com/estshorter/lwpipe/blob/master/tests/test_pipeline.py).

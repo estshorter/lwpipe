@@ -114,6 +114,15 @@ class Pipeline:
                     raise ValueError(f"node.output {output} is not unique")
                 self.outputs_to_indexes[output] = (idx, idx_outputs)
 
+        for node in self.nodes[1:]:
+            if node.inputs is None:
+                continue
+            for input in node.inputs:
+                if input not in self.outputs_to_indexes:
+                    raise ValueError(
+                        f"inputs: {input} will not be calculated in this pipeline"
+                    )
+
     def get_node_names(self) -> list[str]:
         return [node.name for node in self.nodes]
 

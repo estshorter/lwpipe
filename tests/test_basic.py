@@ -361,3 +361,16 @@ def test_kidou(tmp_path):
     pipe.run(1)
     with pytest.raises(ValueError):
         pipe.run(2)
+
+
+def test_inputs_not_found():
+    nodes = [
+        Node(
+            func=np.add,
+            inputs=(1, 2),
+        ),
+        Node(func=lambda x: x * 10, inputs="hoge"),
+    ]
+
+    with pytest.raises(ValueError):
+        Pipeline(nodes)

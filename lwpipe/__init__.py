@@ -350,6 +350,31 @@ class TrivialPipeline:
 
     def __init__(self, funcs: list[Callable]) -> None:
         self.funcs = funcs
+        self.names = []
+
+        name_duplicate_counter = {}
+
+        for func in self.funcs:
+            if hasattr(func, "__name__"):
+                name = func.__name__
+            else:
+                name = "anonymous"
+
+            dup_counter = name_duplicate_counter.get(name, 0)
+            if dup_counter == 0:
+                name_duplicate_counter[name] = 1
+            else:
+                if name in name_duplicate_counter:
+                    name_duplicate_counter[name] = dup_counter + 1
+                    name += f"__{dup_counter + 1}__"
+                    dup_counter = name_duplicate_counter.get(name, 0)
+                    if dup_counter == 0:
+                        name_duplicate_counter[name] = 1
+                    else:
+                        raise ValueError(
+                            f"name: {name} is duplicated. Consider change name"
+                        )
+            self.names.append(name)
 
     def run(self, from_=0, to_=None):
         if to_ is None:
@@ -365,15 +390,11 @@ class TrivialPipeline:
             raise ValueError(f"0 <= to({to_}) <= {len(self.funcs)-1} must be satisfied")
 
         logger.info(
-            f"Scheduled {len(self.funcs[from_:to_+1])} tasks, Total {len(self.funcs)} tasks,"
+            f"Scheduled {len(self.funcs[from_:to_+1])} tasks, Total {len(self.funcs)} tasks."
         )
         for idx, func in enumerate(self.funcs[from_ : to_ + 1]):
-            if hasattr(func, "__name__"):
-                name = func.__name__
-            else:
-                name = "anonymous"
             logger.info(
-                f"Running {idx+1}/{len(self.funcs[from_:to_+1])} tasks ({name})"
+                f"Running {idx+1}/{len(self.funcs[from_:to_+1])} tasks ({self.names[idx]})"
             )
             func()
         logger.info("All tasks have been completed!")

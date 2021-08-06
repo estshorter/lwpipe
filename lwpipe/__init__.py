@@ -367,6 +367,7 @@ class Pipeline:
             # nodeのoutputsにNoneが入っていたらdictには入れない
             if key is not None:
                 self.results[key] = output
+                logger.info(f"Saved output '{key}' in memory")
 
     def _dump_outputs(self, node, outputs):
         if node.outputs_dumper is None:

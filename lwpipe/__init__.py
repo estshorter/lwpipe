@@ -151,7 +151,7 @@ class Pipeline:
             )
 
         logger.info(
-            f"Scheduled {len(self.nodes)} tasks, {len(self.nodes[idx_from:idx_to+1])} tasks in total"
+            f"Scheduled {len(self.nodes[idx_from:idx_to+1])} tasks, {len(self.nodes)} tasks in total"
         )
         outputs = self._load_interim_output()
         for idx, node in enumerate(self.nodes[idx_from : idx_to + 1]):

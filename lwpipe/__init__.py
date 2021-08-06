@@ -98,14 +98,16 @@ class Pipeline:
         names: ノードの名前を与える文字列のリスト。nodesがlist[Callable]の場合のみ有効。
         """
         if isinstance(nodes[0], Node):
-            for node in nodes:
-                if not isinstance(node, Node):
-                    raise ValueError(f"node {node} has wrong type {type(node)}")
+            if len(nodes) > 1:
+                for node in nodes[1:]:
+                    if not isinstance(node, Node):
+                        raise ValueError(f"node {node} has wrong type {type(node)}")
             self.nodes = nodes
         elif callable(nodes[0]):  # すべてCallableだったらNodeに変換
-            for node in nodes:
-                if not callable(node):
-                    raise ValueError(f"node {node} has wrong type {type(node)}")
+            if len(nodes) > 1:
+                for node in nodes[1:]:
+                    if not callable(node):
+                        raise ValueError(f"node {node} has wrong type {type(node)}")
             self.nodes = self.convert_callables_to_nodes(nodes, names)
         else:
             raise ValueError(f"node {nodes[0]} has wrong type {type(nodes[0])}")

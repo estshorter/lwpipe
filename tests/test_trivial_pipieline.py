@@ -33,3 +33,16 @@ def test_name_uniqueness():
     funcs = [no_op, no_op]
     with pytest.raises(ValueError):
         TrivialPipeline(funcs, names=["a1", "a1"])
+
+
+def test_string_from_to():
+    funcs = [no_op, no_op, no_op]
+    pipe = TrivialPipeline(funcs, names=["func1", "func2", "func3"])
+    pipe.run("func1", "func2")
+    pipe.run("func2", "func3")
+    pipe.run("func1", "func3")
+    pipe.run("func3", "func3")
+    with pytest.raises(ValueError):
+        pipe.run("func3", "func1")
+    with pytest.raises(ValueError):
+        pipe.run("func2", "func1")

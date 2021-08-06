@@ -10,7 +10,7 @@ from .utils import _assert_same_length
 logger = logging.getLogger(__name__)
 
 
-__version__ = "4.0.0"
+__version__ = "4.0.4"
 
 
 class DumpType(IntEnum):

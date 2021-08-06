@@ -363,11 +363,14 @@ class Pipeline:
         if node.outputs is None:
             return
         _assert_same_length(node.outputs, outputs, "node.outputs", "outputs")
+        keys = []
         for key, output in zip(node.outputs, outputs):
             # nodeのoutputsにNoneが入っていたらdictには入れない
             if key is not None:
                 self.results[key] = output
-                logger.info(f"Saved output '{key}' in memory")
+                keys.append(f"'{key}'")
+        keys_str = ", ".join(keys)
+        logger.info(f"Saved output {keys_str} in memory")
 
     def _dump_outputs(self, node, outputs):
         if node.outputs_dumper is None:

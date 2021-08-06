@@ -160,7 +160,7 @@ outputs = pipe.run()
 assert outputs[0] == 15
 ```
 
-This module also provides `TrivialPipeline` which just sequentially calls functions:
+`Pipeline` also accepts functions that have no return values:
 ```python
 from lwpipe import TrivialPipeline
 
@@ -168,14 +168,14 @@ def func():
     return
 
 funcs = [func, func]
-pipe = TrivialPipeline(funcs)
+pipe = Pipeline(funcs)
 pipe.run()
 # equivalent to
 # for func in funcs:
 #   func()
 
 # you can specify names of functions
-pipe = TrivialPipeline(funcs, names=["func1", "func2"])
+pipe = Pipeline(funcs, names=["func1", "func2"])
 pipe.run()
 ```
 

@@ -438,3 +438,49 @@ def test_no_return_value():
     pipe = Pipeline([Node(no_op), Node(no_op), Node(no_op)])
     outputs = pipe.run()
     assert outputs is None
+
+
+def no_op():
+    return
+
+
+def test_trivial_pipeline_basic():
+    funcs = [no_op, no_op]
+    pipe = Pipeline(funcs)
+    pipe.run()
+    pipe.run(1, 1)
+    pipe.run(0, 1)
+    with pytest.raises(ValueError):
+        pipe.run(0, 2)
+    with pytest.raises(ValueError):
+        pipe.run(1, 0)
+    with pytest.raises(ValueError):
+        pipe.run(2, 2)
+
+
+def test_trivial_pipeline():
+    def no_op2():
+        return
+
+    funcs = [no_op, no_op, no_op2]
+    pipe = Pipeline(funcs)
+    assert pipe.get_node_names() == ["no_op", "no_op__2__", "no_op2"]
+
+
+def test_name_uniqueness():
+    funcs = [no_op, no_op]
+    with pytest.raises(ValueError):
+        Pipeline(funcs, names=["a1", "a1"])
+
+
+def test_string_from_to():
+    funcs = [no_op, no_op, no_op]
+    pipe = Pipeline(funcs, names=["func1", "func2", "func3"])
+    pipe.run("func1", "func2")
+    pipe.run("func2", "func3")
+    pipe.run("func1", "func3")
+    pipe.run("func3", "func3")
+    with pytest.raises(ValueError):
+        pipe.run("func3", "func1")
+    with pytest.raises(ValueError):
+        pipe.run("func2", "func1")

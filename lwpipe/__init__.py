@@ -10,7 +10,7 @@ from .utils import _assert_same_length
 logger = logging.getLogger(__name__)
 
 
-__version__ = "4.1.0"
+__version__ = "5.0.0"
 
 
 class DumpType(IntEnum):
@@ -88,8 +88,28 @@ class Node:
 
 
 class Pipeline:
-    def __init__(self, nodes: list[Node]) -> None:
-        self.nodes = nodes
+    def __init__(
+        self, nodes: list[Node] | list[Callable], names: list[str] = None
+    ) -> None:
+        """
+        Parameters
+        --------------
+        nodes: 実行するノードのリスト。あるいは関数のリスト。
+        names: ノードの名前を与える文字列のリスト。nodesがlist[Callable]の場合のみ有効。
+        """
+        if isinstance(nodes[0], Node):
+            for node in nodes:
+                if not isinstance(node, Node):
+                    raise ValueError(f"node {node} has wrong type {type(node)}")
+            self.nodes = nodes
+        elif callable(nodes[0]):  # すべてCallableだったらNodeに変換
+            for node in nodes:
+                if not callable(node):
+                    raise ValueError(f"node {node} has wrong type {type(node)}")
+            self.nodes = self.convert_callables_to_nodes(nodes, names)
+        else:
+            raise ValueError(f"node {nodes[0]} has wrong type {type(nodes[0])}")
+
         self.results = dict()
 
         # node.name -> index in self.nodes
@@ -129,6 +149,21 @@ class Pipeline:
                     raise ValueError(
                         f"inputs: {input} will not be calculated in this pipeline"
                     )
+
+    def convert_callables_to_nodes(self, funcs, names):
+        if names is not None:
+            _assert_same_length(funcs, names, "funcs", "names")
+            if len(names) != len(set(names)):
+                raise ValueError(f"names is not unique: {names}")
+        else:
+            names = []
+            for func in funcs:
+                if hasattr(func, "__name__"):
+                    name = func.__name__
+                else:
+                    name = "anonymous"
+                names.append(name)
+        return [Node(func, name=name) for func, name in zip(funcs, names)]
 
     def get_node_names(self) -> list[str]:
         return [node.name for node in self.nodes]
@@ -352,103 +387,6 @@ class Pipeline:
                 if node.outputs_dumper_take_config:
                     args.append(node.config)
                 outputs_dumper(*args)
-
-
-class TrivialPipeline:
-    """
-    関数のリストを受け取って順次実行するだけのパイプライン
-    データの受渡しは行わない。
-    """
-
-    def __init__(self, funcs: list[Callable], names: list[str] = None) -> None:
-        """
-        Parameters
-        --------------
-        funcs: 呼び出される関数群
-        names: 関数の名前
-        """
-        self.funcs = funcs
-        # node.name -> index in self.nodes
-        self.name_to_idx = dict()
-        if names is not None:
-            _assert_same_length(funcs, names, "funcs", "names")
-            if len(names) != len(set(names)):
-                raise ValueError(f"names is not unique: {names}")
-            self.names = names
-            for idx, name in enumerate(names):
-                self.name_to_idx[name] = idx
-            return
-
-        self.names = []
-        name_duplicate_counter = {}
-
-        for idx, func in enumerate(self.funcs):
-            if hasattr(func, "__name__"):
-                name = func.__name__
-            else:
-                name = "anonymous"
-
-            dup_counter = name_duplicate_counter.get(name, 0)
-            if dup_counter == 0:
-                name_duplicate_counter[name] = 1
-            else:
-                name_duplicate_counter[name] = dup_counter + 1
-                name += f"__{dup_counter + 1}__"
-                dup_counter = name_duplicate_counter.get(name, 0)
-                if dup_counter == 0:
-                    name_duplicate_counter[name] = 1
-                else:
-                    raise ValueError(
-                        f"name: {name} is duplicated. Consider change name"
-                    )
-            self.name_to_idx[name] = idx
-            self.names.append(name)
-
-    def _get_start_or_end_index(self, start_or_end: int | str, start_or_end_str: str):
-        if isinstance(start_or_end, int):
-            idx = start_or_end
-        elif isinstance(start_or_end, str):
-            try:
-                idx = self.name_to_idx[start_or_end]
-            except KeyError:
-                raise ValueError(
-                    f"specified {start_or_end_str} node ({start_or_end}) is not found"
-                )
-
-        if idx < 0 or idx >= len(self.funcs):
-            raise ValueError(
-                f"0 <= {start_or_end_str} ({idx}) <= {len(self.funcs)-1} must be satisfied"
-            )
-        return idx
-
-    def run(self, from_: str | int = 0, to_: str | int | None = None):
-        """pipelineを実行する。
-        Parameters
-        ----------------
-        start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能。
-        end: どのノードのまでパイプラインを実行するか。インデックスかnameで指定可能。
-        """
-        if to_ is None:
-            to_ = len(self.funcs) - 1
-        idx_from = self._get_start_or_end_index(from_, "start")
-        self.idx_from = idx_from
-        idx_to = self._get_start_or_end_index(to_, "end")
-        if idx_from > idx_to:
-            raise ValueError(
-                f"idx_from must satisfy idx_from ({idx_from}) <= idx_to ({idx_to})"
-            )
-
-        logger.info(
-            f"Scheduled {len(self.funcs[idx_from:idx_to+1])} tasks, {len(self.funcs)} tasks in total"
-        )
-        for idx, (func, name) in enumerate(
-            zip(self.funcs[idx_from : idx_to + 1], self.names[idx_from : idx_to + 1])
-        ):
-            logger.info(
-                f"Running {idx+1}/{len(self.funcs[idx_from:idx_to+1])} tasks ({name})"
-            )
-            func()
-        logger.info("Completed all tasks!")
 
 
 def _assert_non_zero_length(x, x_str):

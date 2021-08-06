@@ -244,7 +244,10 @@ class Pipeline:
         # outputs_loaderの呼び出しが冗長ではない
         if node_prev.outputs_loader_type == DumpType.BATCH:
             loaded_files_set.add(*node_prev.outputs_path)
-            return node_prev.outputs_loader(*node_prev.outputs_path, node_prev.outputs)
+            args = [*node_prev.outputs_path, node_prev.outputs]
+            if node_prev.outputs_dumper_take_config:
+                args.append(node_prev.config)
+            return node_prev.outputs_loader(*args)
 
         _assert_non_zero_length(node_prev.outputs_path, "node_prev.outputs_path")
 
@@ -261,7 +264,10 @@ class Pipeline:
         outputs = []
         for output_path, outputs_loader in zip(node_prev.outputs_path, outputs_loaders):
             loaded_files_set.add(output_path)
-            outputs.append(outputs_loader(output_path))
+            args = [output_path]
+            if node_prev.outputs_dumper_take_config:
+                args.append(node_prev.config)
+            outputs.append(outputs_loader(*args))
         return outputs
 
     def _load_past_output(self, node, loaded_files_set):

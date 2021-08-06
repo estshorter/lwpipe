@@ -314,15 +314,33 @@ def test_dumper_config(tmp_path):
         filepath = filepath.with_name(cfg["suffix"])
         return dump_pickle(data, filepath)
 
+    def loader(filepath, cfg):
+        filepath = Path(filepath)
+        filepath = filepath.with_name(cfg["suffix"])
+        return load_pickle(filepath)
+
     def dumper_batch(data, filepath, datalabels, cfg):
         filepath = Path(filepath)
         filepath = filepath.with_name(cfg["suffix"])
         return dump_dict_pickle(data, filepath, datalabels)
 
+    def loader_batch(filepath, datalabels, cfg):
+        filepath = Path(filepath)
+        filepath = filepath.with_name(cfg["suffix"])
+        return load_dict_pickle(filepath, datalabels)
+
     result1 = tmp_path / "result1.pickle"
     result2 = tmp_path / "result2.pickle"
     nodes = [
-        Node(func=add, inputs=1, config={"suffix": "_TEST_"}),
+        Node(
+            func=add,
+            inputs=1,
+            config={"suffix": "_TEST_"},
+            outputs_dumper=dumper,
+            outputs_loader=loader,
+            outputs_path=result1,
+            outputs_dumper_take_config=True,
+        ),
         Node(
             func=lambda a, cfg: a,
             outputs_dumper=dumper_batch,
@@ -331,14 +349,17 @@ def test_dumper_config(tmp_path):
             outputs="hoge",
             outputs_dumper_type=DumpType.BATCH,
             outputs_path=result2,
-            outputs_loader=load_savez_compressed,
+            outputs_loader=loader_batch,
         ),
+        Node(lambda a: a),
     ]
     pipe = Pipeline(nodes)
 
     pipe.run()
     assert result1.with_name("_TEST_").exists()
     assert result2.with_name("_TEST_").exists()
+    pipe.run(1)
+    pipe.run(2)
 
 
 def test_kidou(tmp_path):

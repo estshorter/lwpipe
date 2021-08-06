@@ -422,6 +422,12 @@ class TrivialPipeline:
         return idx
 
     def run(self, from_: str | int = 0, to_: str | int | None = None):
+        """pipelineを実行する。
+        Parameters
+        ----------------
+        start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能。
+        end: どのノードのまでパイプラインを実行するか。インデックスかnameで指定可能。
+        """
         if to_ is None:
             to_ = len(self.funcs) - 1
         idx_from = self._get_start_or_end_index(from_, "start")

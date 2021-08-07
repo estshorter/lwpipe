@@ -142,7 +142,7 @@ outputs = pipe.run()
 assert outputs == (5, 6)
 ```
 
-Func with config example:
+you can pass a config object to a function:
 ```python
 from lwpipe import Node, Pipeline
 def add(a, cfg):
@@ -154,9 +154,20 @@ nodes = [Node(func=add, inputs=5, config={"hyperparam": 10})]
 pipe = Pipeline(nodes)
 outputs = pipe.run()
 assert outputs[0] == 15
+
+def dumper(data, filepath, cfg):
+    filepath = Path(filepath)
+    filepath = filepath.with_name(filepath.name+cfg["hyperparam"])
+    return dump_pickle(data, filepath)
+
+# also, outputs_dumper can take config as its argument
+nodes = [Node(func=add, inputs=5, config={"hyperparam": 10},
+              outputs_dumper=dumper,
+              outputs_dumper_take_config=True
+)]
 ```
 
-`Pipeline` also accepts a list of functions with no aruments and return-values:
+`Pipeline` also accepts a list of functions with no arguments and return-values:
 ```python
 from lwpipe import TrivialPipeline
 

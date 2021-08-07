@@ -165,7 +165,7 @@ nodes = [Node(func=add, inputs=5, config={"hyperparam": 10},
 )]
 ```
 
-`Pipeline` also accepts a list of functions with no aruments and return-values:
+`Pipeline` also accepts a list of functions with no arguments and return-values:
 ```python
 from lwpipe import TrivialPipeline
 

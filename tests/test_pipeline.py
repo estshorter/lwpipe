@@ -72,6 +72,7 @@ def test_output(np_array_2d, tmp_path):
 
     pipe = Pipeline(nodes)
     outputs = pipe.run()
+    pipe.clear()
     assert outputs == (24, 25)
     assert result1.exists()
     assert result2.exists()
@@ -102,11 +103,15 @@ def test_ensure_read(np_array_2d, tmp_path):
 
     pipe = Pipeline(nodes)
     outputs = pipe.run()
+    pipe.clear()
+
     assert outputs == (24, 25)
     os.remove(result1)
     with pytest.raises(FileNotFoundError):
         pipe.run(1)
+    pipe.clear()
     pipe.run()
+    pipe.clear()
     os.remove(result2)
     with pytest.raises(FileNotFoundError):
         pipe.run(1)
@@ -141,9 +146,11 @@ def test_base(np_array_2d, tmp_path):
 
     pipe = Pipeline(nodes)
     outputs1 = pipe.run()
+    pipe.clear()
     assert result1.exists()
     assert result2.exists()
     outputs2 = pipe.run(1)
+    pipe.clear()
     outputs3 = pipe.run(2)
     assert outputs1 == outputs2
     assert outputs2 == outputs3
@@ -180,6 +187,7 @@ def test_tuple_output(np_array_2d, tmp_path):
 
     pipe = Pipeline(nodes)
     outputs = pipe.run()
+    pipe.clear()
     outputs2 = pipe.run(nodes[1].func.__name__)
     assert np.all(outputs[0] == outputs2[0])
     assert np.all(outputs[1] == outputs2[1])
@@ -228,6 +236,7 @@ def test_resume_duplicate_name():
 
     pipe = Pipeline(nodes)
     outputs = pipe.run()
+    pipe.clear()
     assert outputs[0] == 10000
     outputs = pipe.run(1)
     assert outputs[0] == 10000
@@ -279,9 +288,12 @@ def test_batch(np_array_2d, tmp_path):
 
     pipe = Pipeline(nodes)
     pipe.run()
+    pipe.clear()
     pipe.run(1)
+    pipe.clear()
     os.remove(result1)
     pipe.run(2)
+    pipe.clear()
     os.remove(result2)
     pipe.run(3)
 
@@ -356,9 +368,11 @@ def test_dumper_config(tmp_path):
     pipe = Pipeline(nodes)
 
     pipe.run()
+    pipe.clear()
     assert result1.with_name("_TEST_").exists()
     assert result2.with_name("_TEST_").exists()
     pipe.run(1)
+    pipe.clear()
     pipe.run(2)
 
 
@@ -379,7 +393,9 @@ def test_kidou(tmp_path):
     pipe = Pipeline(nodes)
 
     pipe.run()
+    pipe.clear()
     pipe.run(1)
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run(2)
 
@@ -415,12 +431,16 @@ def test_to_from(tmp_path):
         ]
     )
     pipe.run()
+    pipe.clear()
     pipe.run(1, 1)
+    pipe.clear()
     pipe.run(0, 1)
     with pytest.raises(ValueError):
         pipe.run(0, 3)
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run(1, 0)
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run(4, 5)
 
@@ -448,14 +468,20 @@ def test_trivial_pipeline_basic():
     funcs = [no_op, no_op]
     pipe = Pipeline(funcs)
     pipe.run()
+    pipe.clear()
     pipe.run(1, 1)
+    pipe.clear()
     pipe.run(0, 1)
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run(0, 2)
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run(1, 0)
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run(2, 2)
+    pipe.clear()
 
 
 def test_trivial_pipeline():
@@ -477,10 +503,71 @@ def test_string_from_to():
     funcs = [no_op, no_op, no_op]
     pipe = Pipeline(funcs, names=["func1", "func2", "func3"])
     pipe.run("func1", "func2")
+    pipe.clear()
     pipe.run("func2", "func3")
+    pipe.clear()
     pipe.run("func1", "func3")
+    pipe.clear()
     pipe.run("func3", "func3")
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run("func3", "func1")
+    pipe.clear()
     with pytest.raises(ValueError):
         pipe.run("func2", "func1")
+
+
+def test_previous_result_to_results_dict(tmp_path):
+    nodes = [
+        Node(
+            func=lambda x: x + "_proc1",
+            inputs="INPUT",
+            outputs="proc1",
+            outputs_dumper=dump_pickle,
+            outputs_path=tmp_path / "proc1.pickle",
+            outputs_loader=load_pickle,
+        ),
+        Node(
+            func=lambda x: x + "_proc2",
+            outputs="proc2",
+            name="proc2",
+            outputs_dumper=dump_pickle,
+            outputs_path=tmp_path / "proc2.pickle",
+        ),
+        Node(func=lambda x: x + "_proc3", inputs="proc1"),
+    ]
+    pipe = Pipeline(nodes)
+    outputs = pipe.run(0)
+    pipe.clear()
+    outputs = pipe.run(1)
+    assert outputs[0] == "INPUT_proc1_proc3"
+    assert pipe.results["proc2"] == "INPUT_proc1_proc2"
+
+
+def test_previous_result_to_results_dict_batch():
+    nodes = [
+        Node(
+            func=lambda x: x + "_proc1",
+            inputs="INPUT",
+            outputs="proc1",
+            outputs_dumper=dump_dict_pickle,
+            outputs_dumper_type=DumpType.BATCH,
+            outputs_path="proc1.pickle",
+            outputs_loader=load_dict_pickle,
+        ),
+        Node(
+            func=lambda x: x + "_proc2",
+            outputs="proc2",
+            name="proc2",
+            outputs_dumper=dump_dict_pickle,
+            outputs_dumper_type=DumpType.BATCH,
+            outputs_path="proc2.pickle",
+        ),
+        Node(func=lambda x: x + "_proc3", inputs="proc1"),
+    ]
+    pipe = Pipeline(nodes)
+    pipe.run()
+    pipe.clear()
+    outputs = pipe.run(1)
+    assert outputs[0] == "INPUT_proc1_proc3"
+    assert pipe.results["proc2"] == "INPUT_proc1_proc2"

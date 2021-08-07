@@ -288,7 +288,19 @@ class Pipeline:
             args = [*node_prev.outputs_path, node_prev.outputs]
             if node_prev.outputs_dumper_take_config:
                 args.append(node_prev.config)
-            return node_prev.outputs_loader(*args)
+            results = node_prev.outputs_loader(*args)
+            if node_prev.outputs is not None:
+                _assert_same_length(
+                    node_prev.outputs,
+                    results,
+                    "node_prev.outputs_path",
+                    "results",
+                )
+                for output, result in zip(node_prev.outputs, results):
+                    if output is not None:
+                        self.results[output] = result
+                        logger.debug(f"Saved '{output}' to memory")
+            return results
 
         _assert_non_zero_length(node_prev.outputs_path, "node_prev.outputs_path")
 
@@ -303,12 +315,18 @@ class Pipeline:
         )
 
         outputs = []
-        for output_path, outputs_loader in zip(node_prev.outputs_path, outputs_loaders):
+        for idx, (output_path, outputs_loader) in enumerate(
+            zip(node_prev.outputs_path, outputs_loaders)
+        ):
             loaded_files_set.add(output_path)
             args = [output_path]
             if node_prev.outputs_dumper_take_config:
                 args.append(node_prev.config)
-            outputs.append(outputs_loader(*args))
+            result = outputs_loader(*args)
+            outputs.append(result)
+            if node_prev.outputs is not None and node_prev.outputs[idx] is not None:
+                self.results[node_prev.outputs[idx]] = result
+                logger.debug(f"Saved '{node_prev.outputs[idx]}' to memory")
         return outputs
 
     def _load_past_output(self, node, loaded_files_set):
@@ -335,6 +353,7 @@ class Pipeline:
                 )
                 for output_key, output in zip(node_dep.outputs, outputs):
                     self.results[output_key] = output
+                    logger.debug(f"Saved '{output_key}' to memory")
                 continue
 
             outputs_loaders = _convert_item_to_list(
@@ -351,6 +370,7 @@ class Pipeline:
                 continue
             loaded_files_set.add(node_dep.outputs_path[idx_])
             self.results[input] = outputs_loaders[idx_](node_dep.outputs_path[idx_])
+            logger.debug(f"Saved '{input}' to memory")
 
     def _get_inputs_from_previous_node(self, node, previous_outputs):
         """前段までの入力を基に、次のNodeへの入力を決める"""
@@ -374,7 +394,7 @@ class Pipeline:
                 self.results[key] = output
                 keys.append(f"'{key}'")
         keys_str = ", ".join(keys)
-        logger.info(f"Saved output {keys_str} in memory")
+        logger.debug(f"Saved {keys_str} to memory")
 
     def _dump_outputs(self, node, outputs):
         if node.outputs_dumper is None:
@@ -397,6 +417,9 @@ class Pipeline:
                 if node.outputs_dumper_take_config:
                     args.append(node.config)
                 outputs_dumper(*args)
+
+    def clear(self):
+        self.results.clear()
 
 
 def _assert_non_zero_length(x, x_str):

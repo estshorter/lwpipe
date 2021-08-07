@@ -3,14 +3,10 @@
 [![python](https://img.shields.io/pypi/pyversions/lwpipe)](https://badge.fury.io/py/lwpipe)
 
 # Overview
-lwpipeは数値実験用のパイプラインを提供するモジュールであり、
-例えば、機械学習における前処理手順に適用可能です。
-前処理は複数の手順から構成されており、
-そのうちのいくつかは実行に時間を要します。
-この場合、重い処理の計算結果を保存しておき、後段のプログラムではそれを読み込むことで、後段の処理が変更になった時の手間を減らすテクニックが、数値実験等の試行錯誤の段階においては一般的です。本モジュールにより、そのようなユースケースにおける、ファイルIOのボイラープレートコードを減らせます。
+lwpipeはデータ処理用の軽量パイプラインを提供するモジュールです。[luigi](https://github.com/spotify/luigi)や[Kedro](https://github.com/quantumblacklabs/kedro)と違い機能は少ないですが、その分手軽にパイプラインを構築・実行できます。
 
-なお、本モジュールのパイプラインにはノード（タスク）間の依存性の概念はなく、最初のノードから順次実行されます。
-また、本モジュールは[Kedro](https://github.com/quantumblacklabs/kedro)から多大な影響を受けています。
+
+なお、本モジュールは[Kedro](https://github.com/quantumblacklabs/kedro)から多大な影響を受けています。
 
 
 # Installation
@@ -20,7 +16,7 @@ pip install lwpipe
 ```
 
 # Usage
-Minimal example (of course, no need to use this library..):
+Minimal example (of course, no need to use this library):
 ``` python
 from lwpipe import Node, Pipeline
 

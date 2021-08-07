@@ -3,7 +3,7 @@
 [![python](https://img.shields.io/pypi/pyversions/lwpipe)](https://badge.fury.io/py/lwpipe)
 
 # Overview
-**lwpipe** provides a lightweight pipeline. lwpipe has fewer features than [luigi](https://github.com/spotify/luigi) or [Kedro](https://github.com/quantumblacklabs/kedro), but it is easier to build and run pipelines.
+**lwpipe** provides a lightweight pipeline. lwpipe has fewer features than [luigi](https://github.com/spotify/luigi) or [Kedro](https://github.com/quantumblacklabs/kedro), but you can quickly build and run pipelines.
 
 Note that lwpipe is highly inspired by [Kedro](https://github.com/quantumblacklabs/kedro).
 

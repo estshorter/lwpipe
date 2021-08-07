@@ -188,7 +188,8 @@ class Pipeline:
             )
 
         logger.info(
-            f"Scheduled {len(self.nodes[idx_from:idx_to+1])} tasks, {len(self.nodes)} tasks in total"
+            f"Scheduled {len(self.nodes[idx_from:idx_to+1])} tasks "
+            + f"(from: {self.nodes[idx_from].name}, to: {self.nodes[idx_to].name})"
         )
         outputs = self._load_interim_output()
         for idx, node in enumerate(self.nodes[idx_from : idx_to + 1]):
@@ -217,7 +218,10 @@ class Pipeline:
             self._insert_outputs_to_dict(node, outputs)
             self._dump_outputs(node, outputs)
 
-        logger.info("Completed all tasks")
+        logger.info(
+            "Completed all tasks "
+            + f"(from: {self.nodes[idx_from].name}, to: {self.nodes[idx_to].name})"
+        )
         return outputs
 
     def _get_start_or_end_index(self, start_or_end: int | str, start_or_end_str: str):

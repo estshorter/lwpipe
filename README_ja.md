@@ -156,7 +156,7 @@ outputs = pipe.run()
 assert outputs[0] == 15
 ```
 
-`Pipeline` also accepts functions that have no return values:
+`Pipeline` also accepts a list of functions with no aruments and return-values:
 ```python
 from lwpipe import TrivialPipeline
 

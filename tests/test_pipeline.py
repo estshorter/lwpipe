@@ -35,13 +35,8 @@ def np_array_2d():
 
 def test_simple(np_array_2d):
     nodes = [
-        Node(
-            func=np.add,
-            inputs=(np_array_2d, 1),
-        ),
-        Node(
-            func=np.sum,
-        ),
+        Node(func=np.add, inputs=(np_array_2d, 1),),
+        Node(func=np.sum,),
     ]
 
     pipe = Pipeline(nodes)
@@ -59,15 +54,10 @@ def test_output(np_array_2d, tmp_path):
             inputs=np_array_2d,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
-            outputs_path=(
-                result1,
-                result2,
-            ),
+            outputs_path=(result1, result2,),
             outputs_loader=load_pickle,
         ),
-        Node(
-            func=lambda x, y: (x.mean(), y.mean()),
-        ),
+        Node(func=lambda x, y: (x.mean(), y.mean()),),
     ]
 
     pipe = Pipeline(nodes)
@@ -90,15 +80,10 @@ def test_ensure_read(np_array_2d, tmp_path):
             inputs=np_array_2d,
             outputs=("mean1", "mean2"),
             outputs_dumper=dump_pickle,
-            outputs_path=(
-                result1,
-                result2,
-            ),
+            outputs_path=(result1, result2,),
             outputs_loader=load_pickle,
         ),
-        Node(
-            func=lambda x, y: (x.mean(), y.mean()),
-        ),
+        Node(func=lambda x, y: (x.mean(), y.mean()),),
     ]
 
     pipe = Pipeline(nodes)
@@ -138,10 +123,7 @@ def test_base(np_array_2d, tmp_path):
             outputs_path=result2,
             outputs_loader=load_npy,
         ),
-        Node(
-            func=lambda x: x + 10,
-            inputs="mean",
-        ),
+        Node(func=lambda x: x + 10, inputs="mean",),
     ]
 
     pipe = Pipeline(nodes)
@@ -168,20 +150,14 @@ def test_tuple_output(np_array_2d, tmp_path):
             inputs=np_array_2d,
             outputs=("divide1", "divide2"),
             outputs_dumper=dump_pickle,
-            outputs_path=(
-                mean1,
-                mean2,
-            ),
+            outputs_path=(mean1, mean2,),
             outputs_loader=load_pickle,
         ),
         Node(
             func=ten_times_two_inputs,
             inputs=("divide1", "divide2"),
             outputs_dumper=dump_npy,
-            outputs_path=(
-                mul1,
-                mul2,
-            ),
+            outputs_path=(mul1, mul2,),
         ),
     ]
 
@@ -196,10 +172,7 @@ def test_tuple_output(np_array_2d, tmp_path):
 def test_no_input_at_initial_node():
     nodes = [
         Node(func=lambda: 100),
-        Node(
-            func=lambda x: 10 * x,
-            name="multiply",
-        ),
+        Node(func=lambda x: 10 * x, name="multiply",),
     ]
 
     pipe = Pipeline(nodes)
@@ -210,11 +183,7 @@ def test_no_input_at_initial_node():
 def test_none_outputs():
     nodes = [
         Node(func=lambda: 100, outputs=[None]),
-        Node(
-            func=lambda x: 10 * x,
-            name="multiply",
-            inputs=[None],
-        ),
+        Node(func=lambda x: 10 * x, name="multiply", inputs=[None],),
     ]
 
     pipe = Pipeline(nodes)
@@ -281,9 +250,7 @@ def test_batch(np_array_2d, tmp_path):
             outputs_path=result3,
             outputs_loader=load_savez_compressed,
         ),
-        Node(
-            func=lambda x, y: (x, y),
-        ),
+        Node(func=lambda x, y: (x, y),),
     ]
 
     pipe = Pipeline(nodes)
@@ -402,10 +369,7 @@ def test_kidou(tmp_path):
 
 def test_inputs_not_found():
     nodes = [
-        Node(
-            func=np.add,
-            inputs=(1, 2),
-        ),
+        Node(func=np.add, inputs=(1, 2),),
         Node(func=lambda x: x * 10, inputs="hoge"),
     ]
 
@@ -571,3 +535,60 @@ def test_previous_result_to_results_dict_batch():
     outputs = pipe.run(1)
     assert outputs[0] == "INPUT_proc1_proc3"
     assert pipe.results["proc2"] == "INPUT_proc1_proc2"
+
+
+def test_ignore(tmp_path):
+    result1 = tmp_path / "result1.pickle"
+    result2 = tmp_path / "result2.pickle"
+    result3 = tmp_path / "result3.pickle"
+    nodes = [
+        Node(
+            func=lambda x: x + 10,
+            inputs=0,
+            name="1",
+            outputs_dumper=dump_pickle,
+            outputs_loader=load_pickle,
+            outputs_path=result1,
+        ),
+        Node(
+            func=lambda x: x + 100,
+            name="2",
+            outputs_dumper=dump_pickle,
+            outputs_loader=load_pickle,
+            outputs_path=result2,
+        ),
+        Node(
+            func=lambda x: x + 100,
+            name="3",
+            outputs_dumper=dump_pickle,
+            outputs_loader=load_pickle,
+            outputs_path=result3,
+        ),
+    ]
+    pipe = Pipeline(nodes)
+    pipe.run(ignore_list=[0])
+    pipe.clear()
+    pipe.run(ignore_list=[1])
+    pipe.clear()
+    pipe.run(ignore_list=["2"])
+    pipe.clear()
+    pipe.run(from_="3", ignore_list=["2"])
+    pipe.clear()
+    with pytest.raises(ValueError):
+        pipe.run(ignore_list=(0, 1, 2))
+    with pytest.raises(ValueError):
+        pipe.run(from_="1", ignore_list=(0,))
+    with pytest.raises(ValueError):
+        pipe.run(from_=2, ignore_list=(0,))
+
+    funcs = [no_op for _ in range(3)]
+    pipe = Pipeline(funcs, ["1", "2", "3"])
+    pipe.run()
+    pipe.run(ignore_list=[0])
+    pipe.clear()
+    pipe.run(ignore_list=[1])
+    with pytest.raises(ValueError):
+        pipe.run(ignore_list=(0, 1, 2))
+    with pytest.raises(ValueError):
+        pipe.run(from_="1", ignore_list=(0,))
+

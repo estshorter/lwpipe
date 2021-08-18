@@ -3,14 +3,14 @@ from __future__ import annotations
 import logging
 from enum import IntEnum, auto
 from inspect import signature
-from typing import Callable, Optional
+from typing import Callable, Iterable, Optional
 
 from .utils import _assert_same_length
 
 logger = logging.getLogger(__name__)
 
 
-__version__ = "5.0.0"
+__version__ = "5.1.0"
 
 
 class DumpType(IntEnum):
@@ -170,18 +170,62 @@ class Pipeline:
     def get_node_names(self) -> list[str]:
         return [node.name for node in self.nodes]
 
-    def run(self, from_: int | str = 0, to_: int | str | None = None):
+    def _handle_ignore_list(
+        self,
+        from_: int | str | None,
+        to_: int | str | None,
+        ignore_list: Iterable[int | str],
+    ):
+        if isinstance(from_, int):
+            raise ValueError("from_ must be string or None")
+        if isinstance(to_, int):
+            raise ValueError("to_ must be string or None")
+
+        ignore_set = set()
+        for idx, ignore in enumerate(ignore_list):
+            ignore = self._get_node_index(ignore, "ignore")
+            if ignore in ignore_set:
+                raise ValueError(f"ignore index: {ignore} is duplicated")
+            ignore_set.add(ignore)
+
+        nodes = []
+        names = []
+        for idx, node in enumerate(self.nodes):
+            if idx not in ignore_set:
+                nodes.append(node)
+                names.append(node.name)
+
+        if len(nodes) == 0:
+            raise ValueError(
+                "number of nodes becomes zero after considering ignore_list"
+            )
+        if nodes[0].inputs is None:
+            nodes[0].inputs = self.nodes[0].inputs
+
+        return Pipeline(nodes, names).run(from_, to_)
+
+    def run(
+        self,
+        from_: int | str | None = None,
+        to_: int | str | None = None,
+        ignore_list: Iterable[int | str] | None = None,
+    ):
         """pipelineを実行する。戻り値はlist。
         Parameters
         ----------------
-        start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能。
-        end: どのノードのまでパイプラインを実行するか。インデックスかnameで指定可能。
+        start: どのノードからパイプラインを開始するか。インデックスかnameで指定可能だが、ignore_listを指定する際は必ずnameで指定する。
+        end: どのノードのまでパイプラインを実行するか。インデックスかnameで指定可能だが、ignore_listを指定する際は必ずnameで指定する。
+        ignore_list: 実行しないノードのリスト。
         """
+        if ignore_list is not None:
+            return self._handle_ignore_list(from_, to_, ignore_list)
+        if from_ is None:
+            from_ = 0
         if to_ is None:
             to_ = len(self.nodes) - 1
-        idx_from = self._get_start_or_end_index(from_, "start")
+        idx_from = self._get_node_index(from_, "start")
         self.idx_from = idx_from
-        idx_to = self._get_start_or_end_index(to_, "end")
+        idx_to = self._get_node_index(to_, "end")
         if idx_from > idx_to:
             raise ValueError(
                 f"idx_from must satisfy idx_from ({idx_from}) <= idx_to ({idx_to})"
@@ -224,7 +268,7 @@ class Pipeline:
         )
         return outputs
 
-    def _get_start_or_end_index(self, start_or_end: int | str, start_or_end_str: str):
+    def _get_node_index(self, start_or_end: int | str, start_or_end_str: str):
         if isinstance(start_or_end, int):
             idx = start_or_end
         elif isinstance(start_or_end, str):
@@ -232,8 +276,12 @@ class Pipeline:
                 idx = self.name_to_idx[start_or_end]
             except KeyError:
                 raise ValueError(
-                    f"specified {start_or_end_str} node ({start_or_end}) is not found"
+                    f'specified {start_or_end_str} node "{start_or_end}" is not found'
                 )
+        else:
+            raise ValueError(
+                f'specified "{start_or_end_str}" node must be int or str, but {type(start_or_end)}',
+            )
 
         if idx < 0 or idx >= len(self.nodes):
             raise ValueError(
@@ -267,9 +315,7 @@ class Pipeline:
                 if idx_ > self.idx_from:
                     continue
                 last_output = self._load_last_output(
-                    self.nodes[idx_ - 1],
-                    loaded_files_set,
-                    idx_ - 1,
+                    self.nodes[idx_ - 1], loaded_files_set, idx_ - 1,
                 )
             else:  # 前段より前の出力を入力にする場合
                 self._load_past_output(self.nodes[idx_], loaded_files_set)
@@ -291,10 +337,7 @@ class Pipeline:
             results = node_prev.outputs_loader(*args)
             if node_prev.outputs is not None:
                 _assert_same_length(
-                    node_prev.outputs,
-                    results,
-                    "node_prev.outputs_path",
-                    "results",
+                    node_prev.outputs, results, "node_prev.outputs_path", "results",
                 )
                 for output, result in zip(node_prev.outputs, results):
                     if output is not None:
@@ -346,10 +389,7 @@ class Pipeline:
                     *node_dep.outputs_path, node_dep.outputs
                 )
                 _assert_same_length(
-                    node_dep.outputs,
-                    outputs,
-                    "node_dep.outputs",
-                    "outputs",
+                    node_dep.outputs, outputs, "node_dep.outputs", "outputs",
                 )
                 for output_key, output in zip(node_dep.outputs, outputs):
                     self.results[output_key] = output

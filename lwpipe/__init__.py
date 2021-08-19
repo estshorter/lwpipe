@@ -10,7 +10,7 @@ from .utils import _assert_same_length
 logger = logging.getLogger(__name__)
 
 
-__version__ = "5.1.0"
+__version__ = "5.1.1"
 
 
 class DumpType(IntEnum):
@@ -201,6 +201,9 @@ class Pipeline:
             )
         if nodes[0].inputs is None:
             nodes[0].inputs = self.nodes[0].inputs
+
+        ignore_set_str = [self.nodes[ignore].name for ignore in ignore_set]
+        logger.info(f"ignored: {ignore_set_str}")
 
         return Pipeline(nodes, names).run(from_, to_)
 
